@@ -1,0 +1,1935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<title>Koala Calm</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ===== SPLASH SCREEN ===== -->
+<div id="splashScreen">
+  <div class="splash-bg"></div>
+  <div class="splash-koala-wrap">
+    <svg viewBox="0 0 100 110" fill="none" width="180" height="198" aria-hidden="true">
+      <!-- Tail -->
+      <ellipse cx="76" cy="88" rx="7" ry="5" fill="#969696" transform="rotate(15 76 88)"/>
+      <!-- Ears -->
+      <ellipse cx="17" cy="21" rx="15" ry="15" fill="#8E8E8E"/>
+      <ellipse cx="17" cy="21" rx="9"  ry="9"  fill="#C9A882"/>
+      <ellipse cx="83" cy="21" rx="15" ry="15" fill="#8E8E8E"/>
+      <ellipse cx="83" cy="21" rx="9"  ry="9"  fill="#C9A882"/>
+      <!-- Head -->
+      <ellipse cx="50" cy="38" rx="28" ry="25" fill="#A0A0A0"/>
+      <ellipse cx="50" cy="38" rx="26" ry="23" fill="#A4A4A4" opacity=".3"/>
+      <ellipse cx="50" cy="43" rx="18" ry="14" fill="#EAE2DA"/>
+      <!-- Eyes -->
+      <ellipse id="sEyeL" cx="40" cy="37" rx="3.8" ry="4.5" fill="#3D3229" style="transform-box:fill-box;transform-origin:center"/>
+      <circle cx="38.5" cy="35.5" r="1.4" fill="#fff" opacity=".9"/>
+      <ellipse id="sEyeR" cx="60" cy="37" rx="3.8" ry="4.5" fill="#3D3229" style="transform-box:fill-box;transform-origin:center"/>
+      <circle id="sEyeShineR" cx="58.5" cy="35.5" r="1.4" fill="#fff" opacity=".9"/>
+      <!-- Nose & mouth -->
+      <ellipse cx="50" cy="46" rx="5.5" ry="3.8" fill="#5C4A3A"/>
+      <path d="M45 50 Q50 53.5 55 50" stroke="#5C4A3A" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+      <!-- Blush -->
+      <ellipse cx="34" cy="46" rx="5" ry="2.5" fill="#F0B8B8" opacity=".35"/>
+      <ellipse cx="66" cy="46" rx="5" ry="2.5" fill="#F0B8B8" opacity=".35"/>
+      <!-- Body -->
+      <ellipse cx="50" cy="76" rx="24" ry="22" fill="#A0A0A0"/>
+      <ellipse cx="50" cy="79" rx="16" ry="15" fill="#DCD4CC"/>
+      <!-- Arms -->
+      <ellipse cx="26" cy="72" rx="8" ry="11" fill="#8E8E8E" transform="rotate(-10 26 72)"/>
+      <ellipse cx="74" cy="72" rx="8" ry="11" fill="#8E8E8E" transform="rotate(10 74 72)"/>
+      <!-- Legs -->
+      <ellipse cx="38" cy="96" rx="10" ry="6.5" fill="#8E8E8E"/>
+      <ellipse cx="62" cy="96" rx="10" ry="6.5" fill="#8E8E8E"/>
+      <!-- Toe beans -->
+      <circle cx="34" cy="98" r="1.5" fill="#C9A882" opacity=".5"/>
+      <circle cx="38" cy="99" r="1.5" fill="#C9A882" opacity=".5"/>
+      <circle cx="42" cy="98" r="1.5" fill="#C9A882" opacity=".5"/>
+      <circle cx="58" cy="98" r="1.5" fill="#C9A882" opacity=".5"/>
+      <circle cx="62" cy="99" r="1.5" fill="#C9A882" opacity=".5"/>
+      <circle cx="66" cy="98" r="1.5" fill="#C9A882" opacity=".5"/>
+    </svg>
+    <div class="splash-bubble">Hey, my friend!</div>
+  </div>
+</div>
+
+<div id="app">
+
+  <!-- ===== TOP BAR ===== -->
+  <div class="top-bar">
+    <div class="top-bar-left">
+      <!-- Animal Logo SVG (swapped by JS on animal change) -->
+      <div id="topBarAnimalIcon" aria-hidden="true">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none">
+          <circle cx="8"  cy="10" r="6"   fill="#9E9E9E"/>
+          <circle cx="8"  cy="10" r="3.5" fill="#C4A882"/>
+          <circle cx="24" cy="10" r="6"   fill="#9E9E9E"/>
+          <circle cx="24" cy="10" r="3.5" fill="#C4A882"/>
+          <ellipse cx="16" cy="16" rx="11" ry="10" fill="#9E9E9E"/>
+          <ellipse cx="16" cy="18" rx="7"  ry="6"  fill="#E8E0D8"/>
+          <circle cx="12.5" cy="15" r="2"  fill="#3D3229"/>
+          <circle cx="11.5" cy="14" r=".7" fill="#fff"/>
+          <circle cx="19.5" cy="15" r="2"  fill="#3D3229"/>
+          <circle cx="18.5" cy="14" r=".7" fill="#fff"/>
+          <ellipse cx="16" cy="19" rx="2.5" ry="1.8" fill="#5C4A3A"/>
+        </svg>
+      </div>
+      <h1 id="koalaName" onclick="promptKoalaName()" style="cursor:pointer">Koala Calm</h1>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <div class="weather-badge" id="weatherBadge" style="display:none">
+        <span id="weatherIcon"></span>
+        <span id="weatherTemp"></span>
+      </div>
+      <div class="xp-display" id="xpDisplay">
+        <div class="xp-icon-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div>
+        <span id="xpCount">0 XP</span>
+      </div>
+      <div class="leaves-display" id="leavesDisplay" onclick="openFeedOverlay()" aria-label="Eucalyptus leaves">
+        <div class="leaves-icon-wrap">
+          <!-- Simple clean leaf at 16x16 viewBox — readable at any small size -->
+          <svg viewBox="0 0 16 16" width="11" height="11" fill="none" aria-hidden="true">
+            <path d="M8 1C10.2 2.8 14 5.8 14 9.8C14 13 11.3 15 8 15C4.7 15 2 13 2 9.8C2 5.8 5.8 2.8 8 1Z" fill="white"/>
+            <path d="M8 15 Q7.2 11.5 6.5 8.5" stroke="rgba(30,100,30,.55)" stroke-width="1.1" fill="none" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <span class="leaf-count-el" id="leafCountTop">0</span>
+      </div>
+      <div class="coin-display" id="coinDisplay">
+        <div class="coin-icon-wrap">
+          <svg viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <text x="3.5" y="11" font-size="11" font-weight="900" fill="#fff">$</text>
+          </svg>
+        </div>
+        <span id="coinCount">0</span>
+      </div>
+      <button class="settings-btn" onclick="openSettings()" aria-label="Settings">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== HOME SCREEN ===== -->
+  <div class="screen active" id="screenHome">
+
+    <!-- Room / Scene -->
+    <div class="room-container" id="roomContainer">
+      <div class="room-sky sky-morning" id="roomSky"></div>
+      <div class="cloud-layer" id="cloudLayer"></div>
+      <div class="stars-layer" id="starsLayer"></div>
+      <div class="moon" id="moon"></div>
+      <div class="room-wall"></div>
+
+      <!-- Window -->
+      <div class="window-outer">
+        <div class="window-frame" id="windowFrame">
+          <div class="scene-haze" id="sceneHaze"></div>
+
+          <!-- Far mountains -->
+          <svg class="scene-layer scene-far" viewBox="0 0 400 220" preserveAspectRatio="xMidYMax slice" id="sceneFar" aria-hidden="true">
+            <defs>
+              <linearGradient id="mfg2" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stop-color="#B8C4D0"/>
+                <stop offset="60%"  stop-color="#AAB7C4"/>
+                <stop offset="100%" stop-color="#9CAAB8"/>
+              </linearGradient>
+              <linearGradient id="mfSnow" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stop-color="#E8EEF4"/>
+                <stop offset="100%" stop-color="#CCD6E0"/>
+              </linearGradient>
+              <filter id="farBlur"><feGaussianBlur stdDeviation="1.2"/></filter>
+            </defs>
+            <path d="M-20 220 C-20 220 0 175 25 168 C40 164 48 170 60 162 C72 154 78 142 95 130 C108 121 118 128 130 120 C142 112 150 98 168 88 C180 82 190 90 200 86 C210 82 218 72 235 65 C248 60 255 68 268 62 C278 58 285 50 300 48 C310 47 318 55 330 52 C340 50 348 58 360 62 C375 67 390 74 410 80 L420 220Z" fill="url(#mfg2)" filter="url(#farBlur)"/>
+            <path d="M160 88 C165 82 172 78 168 88 C164 94 158 92 160 88Z" fill="url(#mfSnow)" opacity=".85"/>
+            <path d="M228 65 C233 58 242 55 238 68 C234 74 226 72 228 65Z" fill="url(#mfSnow)" opacity=".9"/>
+            <path d="M293 48 C298 42 308 40 304 52 C300 58 290 55 293 48Z" fill="url(#mfSnow)" opacity=".85"/>
+            <path d="M-20 220 C-20 220 10 185 35 178 C55 172 65 180 85 170 C100 163 115 155 135 148 C155 142 165 150 180 145 C200 138 210 145 230 140 C250 135 260 142 280 138 C300 134 310 140 330 145 C350 150 370 155 420 165 L420 220Z" fill="#A0AEB8" opacity=".7" filter="url(#farBlur)"/>
+          </svg>
+
+          <!-- Mid mountains -->
+          <svg class="scene-layer scene-mid" viewBox="0 0 400 180" preserveAspectRatio="xMidYMax slice" id="sceneMid" aria-hidden="true">
+            <defs>
+              <linearGradient id="mmg" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stop-color="#6F8F72"/>
+                <stop offset="50%"  stop-color="#5A7D5E"/>
+                <stop offset="100%" stop-color="#4A6B4E"/>
+              </linearGradient>
+              <linearGradient id="mmgLit" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%"   stop-color="#7E9C82"/>
+                <stop offset="100%" stop-color="#6A8A6E"/>
+              </linearGradient>
+              <linearGradient id="mmgShade" x1="1" y1="0" x2="0" y2="0">
+                <stop offset="0%"   stop-color="#4A6648"/>
+                <stop offset="100%" stop-color="#567060"/>
+              </linearGradient>
+              <filter id="midSoft"><feGaussianBlur stdDeviation="0.5"/></filter>
+            </defs>
+            <path d="M-20 180 C-10 180 5 140 20 132 C35 124 42 135 58 122 C70 112 78 100 95 88 C108 78 118 86 132 76 C142 69 150 58 170 50 C185 44 192 54 208 48 C220 43 228 36 248 32 C262 29 270 38 285 34 C298 31 305 40 320 44 C338 49 350 56 365 62 C380 68 395 78 420 85 L420 180Z" fill="url(#mmg)"/>
+            <path d="M88 88 C95 80 105 78 108 86 C100 92 94 90 88 88Z" fill="url(#mmgLit)" opacity=".6"/>
+            <path d="M162 50 C170 42 182 40 186 52 C178 58 168 56 162 50Z" fill="url(#mmgLit)" opacity=".55"/>
+            <path d="M240 32 C250 25 262 24 266 36 C258 42 246 38 240 32Z" fill="url(#mmgLit)" opacity=".6"/>
+            <path d="M95 88 C85 95 72 110 58 122 C62 108 78 96 95 88Z" fill="url(#mmgShade)" opacity=".5"/>
+            <path d="M170 50 C158 60 145 72 132 76 C140 64 155 54 170 50Z" fill="url(#mmgShade)" opacity=".45"/>
+            <path d="M248 32 C238 42 225 50 208 48 C218 40 232 34 248 32Z" fill="url(#mmgShade)" opacity=".5"/>
+            <path d="M-20 180 L-20 148 C0 142 20 146 40 140 C60 134 75 138 95 132 C115 126 130 130 150 126 C170 122 185 125 205 120 C225 115 240 118 260 114 C280 110 295 113 315 110 C335 107 350 112 370 115 C390 118 405 120 420 122 L420 180Z" fill="#3D5E40"/>
+            <path d="M-20 150 C-5 146 10 148 25 144 C40 140 50 143 65 139 C80 135 90 138 105 134 C120 130 130 133 145 130 C160 127 170 129 185 126 C200 123 210 125 225 122 C240 119 250 121 265 118 C280 115 290 117 305 115 C320 113 330 115 345 113 C360 111 370 114 385 116 L420 118 L420 155 C400 150 380 148 360 148 C340 148 320 150 300 148 C280 146 260 148 240 146 C220 144 200 147 180 145 C160 143 140 146 120 144 C100 142 80 145 60 143 C40 141 20 144 0 148 Z" fill="#4A6E4C" opacity=".5"/>
+          </svg>
+
+          <!-- Near forest -->
+          <svg class="scene-layer scene-near" viewBox="0 0 400 130" preserveAspectRatio="xMidYMax slice" id="sceneNear" aria-hidden="true">
+            <defs>
+              <linearGradient id="mng" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stop-color="#3A5E40"/>
+                <stop offset="100%" stop-color="#2A4430"/>
+              </linearGradient>
+              <linearGradient id="bushG" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stop-color="#2F4F3A"/>
+                <stop offset="100%" stop-color="#1E3828"/>
+              </linearGradient>
+            </defs>
+            <path d="M-20 130 C-20 130 -15 92 -5 86 C5 80 8 88 15 78 C22 68 26 58 35 50 C42 44 48 52 55 46 C60 42 65 36 72 32 C78 29 82 34 88 30 C93 27 98 22 105 20 C110 18 115 24 120 22 C125 20 128 28 135 32 C140 35 145 28 150 24 C156 20 160 26 168 30 C175 34 178 28 185 24 C190 21 195 18 202 16 C208 14 212 20 218 24 C224 28 228 22 235 18 C240 15 246 20 252 24 C258 28 262 22 268 18 C274 15 280 22 286 28 C292 34 296 28 302 24 C308 20 314 26 320 32 C328 40 334 35 340 30 C346 26 352 34 360 40 C368 46 375 42 382 48 C390 54 398 50 410 58 C418 64 420 72 420 80 L420 130Z" fill="url(#mng)"/>
+            <path d="M30 50 C32 42 34 35 36 30 C37 28 38 28 39 30 C41 35 43 42 45 50Z" fill="#2A4430"/>
+            <path d="M68 32 C70 24 72 18 74 14 C75 12 76 12 77 14 C79 18 81 24 83 32Z" fill="#243C28"/>
+            <path d="M100 20 C102 12 104 6 106 2 C107 0 108 0 109 2 C111 6 113 12 115 20Z" fill="#2A4430"/>
+            <path d="M145 24 C147 16 149 10 151 6 C152 4 153 4 154 6 C156 10 158 16 160 24Z" fill="#223A26"/>
+            <path d="M195 16 C197 8 199 2 201 -2 C202 -4 203 -4 204 -2 C206 2 208 8 210 16Z" fill="#2A4430"/>
+            <path d="M230 18 C232 10 234 4 236 0 C237 -2 238 -2 239 0 C241 4 243 10 245 18Z" fill="#243C28"/>
+            <path d="M265 18 C267 10 269 5 271 1 C272 -1 273 -1 274 1 C276 5 278 10 280 18Z" fill="#2A4430"/>
+            <path d="M298 24 C300 16 302 10 304 6 C305 4 306 4 307 6 C309 10 311 16 313 24Z" fill="#223A26"/>
+            <path d="M338 30 C340 22 342 16 344 12 C345 10 346 10 347 12 C349 16 351 22 353 30Z" fill="#2A4430"/>
+            <path d="M375 48 C377 40 379 34 381 30 C382 28 383 28 384 30 C386 34 388 40 390 48Z" fill="#243C28"/>
+            <path d="M-20 130 L-20 100 C0 96 15 98 30 94 C50 90 65 92 85 88 C105 84 120 87 140 84 C160 81 175 83 195 80 C215 77 230 79 250 76 C270 73 285 76 305 74 C325 72 340 75 360 78 C380 81 400 84 420 86 L420 130Z" fill="url(#bushG)"/>
+            <path d="M15 96 C18 92 22 90 25 92 C28 94 24 96 20 97Z" fill="#264236" opacity=".6"/>
+            <path d="M65 90 C68 86 72 84 75 86 C78 88 74 90 70 91Z" fill="#264236" opacity=".6"/>
+            <path d="M120 86 C123 82 127 80 130 82 C133 84 129 86 125 87Z" fill="#264236" opacity=".6"/>
+            <path d="M185 82 C188 78 192 76 195 78 C198 80 194 82 190 83Z" fill="#264236" opacity=".6"/>
+            <path d="M250 78 C253 74 257 72 260 74 C263 76 259 78 255 79Z" fill="#264236" opacity=".6"/>
+            <path d="M310 76 C313 72 317 70 320 72 C323 74 319 76 315 77Z" fill="#264236" opacity=".6"/>
+          </svg>
+
+          <!-- Weather effect layers (inside window frame) -->
+          <div class="rain-layer" id="rainLayer"></div>
+          <div class="snow-layer" id="snowLayer"></div>
+          <div class="lightning-flash" id="lightningFlash"></div>
+          <div class="window-glass" id="windowGlass"></div>
+          <div class="window-light-cast" id="windowLightCast"></div>
+          <div class="window-div-h"></div>
+          <div class="window-div-v"></div>
+
+          <!-- Curtains (inside window frame — toggled by CSS class) -->
+          <svg class="curtain-left" id="curtainLeft" viewBox="0 0 50 120" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <linearGradient id="clg" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%"   stop-color="#D4A0C0"/>
+                <stop offset="100%" stop-color="#C08AA8"/>
+              </linearGradient>
+            </defs>
+            <path d="M0 0 Q18 8 12 30 Q6 52 16 74 Q24 96 10 120 L0 120Z" fill="url(#clg)"/>
+            <path d="M4 0 Q22 8 16 30 Q10 52 20 74 Q28 96 14 120 L12 120 Q26 96 18 74 Q8 52 14 30 Q20 8 2 0Z" fill="#C890B0" opacity="0.4"/>
+          </svg>
+          <svg class="curtain-right" id="curtainRight" viewBox="0 0 50 120" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <linearGradient id="crg" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%"   stop-color="#C08AA8"/>
+                <stop offset="100%" stop-color="#D4A0C0"/>
+              </linearGradient>
+            </defs>
+            <path d="M50 0 Q32 8 38 30 Q44 52 34 74 Q26 96 40 120 L50 120Z" fill="url(#crg)"/>
+            <path d="M46 0 Q28 8 34 30 Q40 52 30 74 Q22 96 36 120 L38 120 Q24 96 32 74 Q42 52 36 30 Q30 8 48 0Z" fill="#C890B0" opacity="0.4"/>
+          </svg>
+        </div>
+        <div class="window-sill"></div>
+      </div>
+
+      <!-- Room structure -->
+      <div class="baseboard"></div>
+      <div class="room-floor" id="roomFloor"></div>
+      <div class="fireplace-glow" id="fireplaceGlow"></div>
+      <div class="sunbeam" id="sunbeam"></div>
+      <div class="decor-layer" id="decorLayer"></div>
+      <div class="ambient-layer" id="ambientLayer"></div>
+      <div class="lamp-glow" id="lampGlow" style="bottom:38%;right:-5%"></div>
+
+      <!-- Koala (interactive) -->
+      <div class="koala-scene" id="koalaSitting" role="button" aria-label="Pet the koala">
+        <div class="koala-shadow"></div>
+        <div class="koala-body idle" id="koalaBody">
+          <svg viewBox="0 0 100 110" fill="none" width="100" height="110" id="koalaSvg" aria-hidden="true" overflow="visible">
+            <!-- Tail (behind body) -->
+            <ellipse cx="74" cy="90" rx="8" ry="6" fill="#969696" id="koalaTail" transform="rotate(15 74 90)"/>
+            <!-- BODY — large, drawn before head so head overlaps it -->
+            <ellipse cx="50" cy="78" rx="27" ry="25" fill="#ABABAB"/>
+            <!-- Belly -->
+            <ellipse cx="50" cy="82" rx="18" ry="17" fill="#DCD4CC"/>
+            <!-- Belly highlight -->
+            <ellipse cx="47" cy="77" rx="9" ry="11" fill="#E4DCD4" opacity=".3"/>
+            <!-- ARMS — overlap body sides, clearly attached -->
+            <ellipse cx="22" cy="74" rx="9" ry="13" fill="#9A9A9A" transform="rotate(-12 22 74)" id="armL"/>
+            <ellipse cx="78" cy="74" rx="9" ry="13" fill="#9A9A9A" transform="rotate(12 78 74)"  id="armR"/>
+            <!-- Paw tips -->
+            <ellipse cx="17" cy="84" rx="5.5" ry="3.8" fill="#888888" transform="rotate(-12 17 84)"/>
+            <ellipse cx="83" cy="84" rx="5.5" ry="3.8" fill="#888888" transform="rotate(12 83 84)"/>
+            <!-- LEGS — wide, grounded at bottom of body -->
+            <ellipse cx="36" cy="98" rx="14" ry="8" fill="#9A9A9A"/>
+            <ellipse cx="64" cy="98" rx="14" ry="8" fill="#9A9A9A"/>
+            <!-- Toe beans -->
+            <circle cx="27" cy="102" r="2.2" fill="#C9A882" opacity=".6"/>
+            <circle cx="33" cy="104" r="2.2" fill="#C9A882" opacity=".6"/>
+            <circle cx="39" cy="103" r="2.2" fill="#C9A882" opacity=".6"/>
+            <circle cx="55" cy="103" r="2.2" fill="#C9A882" opacity=".6"/>
+            <circle cx="61" cy="104" r="2.2" fill="#C9A882" opacity=".6"/>
+            <circle cx="67" cy="102" r="2.2" fill="#C9A882" opacity=".6"/>
+            <!-- EARS (behind head) -->
+            <ellipse cx="17" cy="20" rx="17" ry="17" fill="#8E8E8E" id="earLeft"/>
+            <ellipse cx="17" cy="20" rx="10" ry="10" fill="#C9A882"/>
+            <!-- Ear inner fur detail -->
+            <ellipse cx="17" cy="20" rx="6" ry="6" fill="#D4B89A" opacity=".5"/>
+            <ellipse cx="83" cy="20" rx="17" ry="17" fill="#8E8E8E" id="earRight"/>
+            <ellipse cx="83" cy="20" rx="10" ry="10" fill="#C9A882"/>
+            <ellipse cx="83" cy="20" rx="6" ry="6" fill="#D4B89A" opacity=".5"/>
+            <!-- HEAD — overlaps top of body for seamless connection -->
+            <ellipse cx="50" cy="40" rx="30" ry="27" fill="#ABABAB"/>
+            <!-- Subtle head shading -->
+            <ellipse cx="50" cy="35" rx="24" ry="18" fill="#B2B2B2" opacity=".25"/>
+            <!-- Face/muzzle -->
+            <ellipse cx="50" cy="46" rx="20" ry="16" fill="#EAE2DA"/>
+            <!-- Eyes -->
+            <g id="koalaEyes">
+              <ellipse id="eyeL" cx="38" cy="38" rx="4.2" ry="5" fill="#3D3229"/>
+              <circle cx="36.5" cy="36.5" r="1.6" fill="#fff" opacity=".9" id="eyeShineL"/>
+              <circle cx="39.5" cy="39.5" r=".7"  fill="#fff" opacity=".4"/>
+              <ellipse id="eyeR" cx="62" cy="38" rx="4.2" ry="5" fill="#3D3229"/>
+              <circle cx="60.5" cy="36.5" r="1.6" fill="#fff" opacity=".9" id="eyeShineR"/>
+              <circle cx="63.5" cy="39.5" r=".7"  fill="#fff" opacity=".4"/>
+            </g>
+            <!-- Eyebrows -->
+            <line id="browL" x1="34" y1="31" x2="43" y2="31.5" stroke="#7A7A7A" stroke-width="1.5" stroke-linecap="round" opacity="0"/>
+            <line id="browR" x1="57" y1="31.5" x2="66" y2="31" stroke="#7A7A7A" stroke-width="1.5" stroke-linecap="round" opacity="0"/>
+            <!-- Nose -->
+            <ellipse cx="50" cy="48" rx="6.5" ry="4.5" fill="#5C4A3A" id="koalaNose"/>
+            <ellipse cx="50" cy="47.5" rx="3.5" ry="2.2" fill="#6B5A4A" opacity=".3"/>
+            <line x1="50" y1="50.5" x2="50" y2="52" stroke="#5C4A3A" stroke-width=".9" stroke-linecap="round"/>
+            <!-- Mouth -->
+            <path d="M44 53 Q50 57.5 56 53" stroke="#5C4A3A" stroke-width="1.5" fill="none" stroke-linecap="round" id="koalaMouth"/>
+            <!-- Blush -->
+            <ellipse cx="31" cy="48" rx="5.5" ry="3" fill="#F0B8B8" opacity=".4" id="blushL"/>
+            <ellipse cx="69" cy="48" rx="5.5" ry="3" fill="#F0B8B8" opacity=".4" id="blushR"/>
+            <!-- Activity: Painting easel (large canvas) -->
+            <g id="actPainting" opacity="0" style="transition:opacity 0.5s">
+              <!-- Easel legs (taller, wider) -->
+              <line x1="120" y1="18" x2="96" y2="88" stroke="#8B6914" stroke-width="3" stroke-linecap="round"/>
+              <line x1="120" y1="18" x2="144" y2="88" stroke="#8B6914" stroke-width="3" stroke-linecap="round"/>
+              <line x1="120" y1="18" x2="120" y2="88" stroke="#8B6914" stroke-width="2" stroke-linecap="round"/>
+              <line x1="103" y1="62" x2="137" y2="62" stroke="#8B6914" stroke-width="1.8"/>
+              <!-- Big canvas frame -->
+              <rect x="96" y="4" width="48" height="42" rx="3" fill="#FFFDF5" stroke="#8B6914" stroke-width="2.2"/>
+              <!-- Canvas background texture -->
+              <rect x="99" y="7" width="42" height="36" rx="2" fill="#FFF8F0"/>
+              <!-- Art being painted — layered strokes that look in-progress -->
+              <ellipse cx="112" cy="18" rx="7" ry="6" fill="#FF6B6B" opacity=".85"/>
+              <ellipse cx="126" cy="15" rx="6" ry="5" fill="#4D96FF" opacity=".85"/>
+              <ellipse cx="134" cy="22" rx="5" ry="5" fill="#6BCB77" opacity=".85"/>
+              <ellipse cx="118" cy="26" rx="5" ry="4" fill="#FFD93D" opacity=".85"/>
+              <ellipse cx="108" cy="30" rx="4" ry="3.5" fill="#FF9F43" opacity=".8"/>
+              <ellipse cx="128" cy="29" rx="4" ry="3" fill="#A29BFE" opacity=".8"/>
+              <!-- Animated wet paint stroke appearing -->
+              <ellipse cx="122" cy="36" rx="3" ry="2.5" fill="#FF6B6B" opacity=".7">
+                <animate attributeName="rx" values="0;3;3" dur="2.4s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0;0.8;0.7" dur="2.4s" repeatCount="indefinite"/>
+              </ellipse>
+              <!-- Brush strokes detail lines -->
+              <line x1="100" y1="12" x2="108" y2="10" stroke="#D4A870" stroke-width="1" opacity=".4"/>
+              <line x1="130" y1="35" x2="138" y2="33" stroke="#D4A870" stroke-width="1" opacity=".4"/>
+              <!-- Brush handle (held by arm) -->
+              <line x1="78" y1="60" x2="97" y2="30" stroke="#8B6914" stroke-width="2.5" stroke-linecap="round"/>
+              <rect x="74" y="58" width="7" height="5" rx="2" fill="#C8A060" transform="rotate(-55 77 60)"/>
+              <ellipse cx="76" cy="63" rx="4" ry="2.5" fill="#FF6B6B" transform="rotate(-55 76 63)"/>
+            </g>
+            <!-- Activity: Bouncing ball (koala's toy, appears at feet) -->
+            <g id="actBall" opacity="0" style="transition:opacity 0.5s">
+              <!-- shadow grows/shrinks opposite of ball height -->
+              <ellipse id="actBallShadow" cx="82" cy="103" rx="8" ry="2.5" fill="rgba(0,0,0,0.18)"/>
+              <circle id="actBallCircle" cx="82" cy="95" r="9" fill="#4D96FF" stroke="#2255CC" stroke-width="1.5"/>
+              <path d="M76 93 Q82 90 88 93" stroke="#2255CC" stroke-width="1" fill="none"/>
+              <path d="M76 97 Q82 100 88 97" stroke="#2255CC" stroke-width="1" fill="none"/>
+            </g>
+            <!-- Activity: Yoga sparkles -->
+            <g id="actYoga" opacity="0" style="transition:opacity 0.5s">
+              <ellipse cx="50" cy="107" rx="35" ry="5" fill="rgba(107,203,119,0.2)" stroke="rgba(107,203,119,0.4)" stroke-width="1.5"/>
+              <circle cx="12" cy="50" r="2.5" fill="#FFD700">
+                <animate attributeName="opacity" values="0.9;0.1;0.9" dur="1.8s" repeatCount="indefinite"/>
+              </circle>
+              <circle cx="88" cy="50" r="2.5" fill="#FFD700">
+                <animate attributeName="opacity" values="0.9;0.1;0.9" dur="1.8s" begin="0.6s" repeatCount="indefinite"/>
+              </circle>
+              <circle cx="50" cy="12" r="2" fill="#FFD700">
+                <animate attributeName="opacity" values="0.7;0.1;0.7" dur="1.8s" begin="1.2s" repeatCount="indefinite"/>
+              </circle>
+              <circle cx="-5" cy="80" r="1.8" fill="#A8D8EA">
+                <animate attributeName="opacity" values="0.8;0.1;0.8" dur="2s" begin="0.3s" repeatCount="indefinite"/>
+              </circle>
+              <circle cx="105" cy="80" r="1.8" fill="#A8D8EA">
+                <animate attributeName="opacity" values="0.8;0.1;0.8" dur="2s" begin="0.9s" repeatCount="indefinite"/>
+              </circle>
+            </g>
+            <!-- Activity: Dancing music notes -->
+            <g id="actDance" opacity="0" style="transition:opacity 0.5s">
+              <text x="-5" y="60" font-size="14" fill="#FFD700" font-family="sans-serif">♪
+                <animate attributeName="y" values="60;30" dur="1.4s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0.9;0" dur="1.4s" repeatCount="indefinite"/>
+              </text>
+              <text x="50" y="50" font-size="11" fill="#FF6B6B" font-family="sans-serif">♫
+                <animate attributeName="y" values="50;20" dur="1.4s" begin="0.35s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0.8;0" dur="1.4s" begin="0.35s" repeatCount="indefinite"/>
+              </text>
+              <text x="100" y="55" font-size="12" fill="#6BCB77" font-family="sans-serif">♪
+                <animate attributeName="y" values="55;25" dur="1.4s" begin="0.7s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0.8;0" dur="1.4s" begin="0.7s" repeatCount="indefinite"/>
+              </text>
+            </g>
+            <!-- Activity: Journaling (book appears in lap) -->
+            <g id="actJournal" opacity="0" style="transition:opacity 0.5s">
+              <rect x="55" y="78" width="22" height="16" rx="2.5" fill="#F5E6C8" stroke="#C4A86C" stroke-width="1.2"/>
+              <line x1="58" y1="83" x2="74" y2="83" stroke="#C4A86C" stroke-width=".9" opacity=".7"/>
+              <line x1="58" y1="87" x2="74" y2="87" stroke="#C4A86C" stroke-width=".9" opacity=".7"/>
+              <line x1="58" y1="91" x2="70" y2="91" stroke="#C4A86C" stroke-width=".9" opacity=".7"/>
+              <rect x="65" y="78" width="1.5" height="16" fill="#C4A86C" opacity=".4"/>
+              <!-- Pencil -->
+              <line x1="78" y1="74" x2="72" y2="80" stroke="#F4A460" stroke-width="2" stroke-linecap="round"/>
+              <line x1="72" y1="80" x2="70" y2="82" stroke="#F4A460" stroke-width="1.5" stroke-linecap="round"/>
+              <polygon points="70,82 68,83 69,81" fill="#3D3229"/>
+            </g>
+            <!-- Bandaids -->
+            <g id="bandaids" opacity="0">
+              <rect x="55" y="28" width="14" height="6" rx="2" fill="#F5C8A0" transform="rotate(-15 62 31)"/>
+              <line x1="58" y1="29" x2="58" y2="33" stroke="#D4A878" stroke-width=".6" transform="rotate(-15 62 31)"/>
+              <line x1="61" y1="29" x2="61" y2="33" stroke="#D4A878" stroke-width=".6" transform="rotate(-15 62 31)"/>
+              <line x1="64" y1="29" x2="64" y2="33" stroke="#D4A878" stroke-width=".6" transform="rotate(-15 62 31)"/>
+              <rect x="18" y="68" width="12" height="5" rx="2" fill="#F5C8A0" transform="rotate(20 24 70)"/>
+              <line x1="21" y1="69" x2="21" y2="72" stroke="#D4A878" stroke-width=".5" transform="rotate(20 24 70)"/>
+              <line x1="24" y1="69" x2="24" y2="72" stroke="#D4A878" stroke-width=".5" transform="rotate(20 24 70)"/>
+              <line x1="27" y1="69" x2="27" y2="72" stroke="#D4A878" stroke-width=".5" transform="rotate(20 24 70)"/>
+              <rect x="42" y="78" width="14" height="6" rx="2" fill="#F5C8A0" transform="rotate(10 49 81)"/>
+              <line x1="45" y1="79" x2="45" y2="83" stroke="#D4A878" stroke-width=".6" transform="rotate(10 49 81)"/>
+              <line x1="49" y1="79" x2="49" y2="83" stroke="#D4A878" stroke-width=".6" transform="rotate(10 49 81)"/>
+              <line x1="53" y1="79" x2="53" y2="83" stroke="#D4A878" stroke-width=".6" transform="rotate(10 49 81)"/>
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Bed (shown when checked in + night) -->
+      <div class="bed-scene" id="bedScene">
+        <div class="bed-shadow"></div>
+        <svg viewBox="0 0 145 85" fill="none" width="145" height="85" aria-hidden="true">
+          <rect x="10" y="40" width="125" height="38" rx="5" fill="#B8956A" stroke="#A08260" stroke-width="1.5"/>
+          <rect x="6"   y="20" width="16"  height="58" rx="5" fill="#A08260" stroke="#8A7050" stroke-width="1"/>
+          <rect x="125" y="32" width="16"  height="46" rx="5" fill="#A08260" stroke="#8A7050" stroke-width="1"/>
+          <rect x="18" y="38" width="109" height="26" rx="4" fill="#F5EDE0"/>
+          <path d="M45 62 Q45 38 56 38 L127 38 Q131 38 131 42 L131 62 Q131 64 129 64 L47 64 Q45 64 45 62Z" fill="#B8D8B6"/>
+          <path d="M52 38 Q62 24 80 26 Q98 28 108 34 Q118 36 127 38" fill="#C8E4C6" stroke="#A8C8A6" stroke-width="1"/>
+          <path d="M45 62 L131 62" stroke="#98B896" stroke-width="1"/>
+          <ellipse cx="34" cy="47" rx="15" ry="10" fill="#FFFBF0" stroke="#E8DFD0" stroke-width="1"/>
+          <!-- Sleeping koala head -->
+          <ellipse cx="25" cy="33" rx="8" ry="8" fill="#8E8E8E"/>
+          <ellipse cx="25" cy="33" rx="5" ry="4.5" fill="#C9A882"/>
+          <ellipse cx="44" cy="31" rx="8" ry="8" fill="#8E8E8E"/>
+          <ellipse cx="44" cy="31" rx="5" ry="4.5" fill="#C9A882"/>
+          <ellipse cx="36" cy="41" rx="13" ry="11" fill="#A0A0A0"/>
+          <ellipse cx="36" cy="44" rx="8.5" ry="7"  fill="#EAE2DA"/>
+          <path d="M30 41 Q32 39 34 41" stroke="#3D3229" stroke-width="1.4" stroke-linecap="round" fill="none"/>
+          <path d="M38 41 Q40 39 42 41" stroke="#3D3229" stroke-width="1.4" stroke-linecap="round" fill="none"/>
+          <ellipse cx="36" cy="45" rx="2.8" ry="1.7" fill="#5C4A3A"/>
+          <path d="M34 47 Q36 48.5 38 47" stroke="#5C4A3A" stroke-width=".7" fill="none"/>
+          <rect x="14"  y="74" width="6" height="8" rx="2" fill="#A08260"/>
+          <rect x="124" y="74" width="6" height="8" rx="2" fill="#A08260"/>
+        </svg>
+        <div class="zzz"><span>z</span><span>z</span><span>z</span></div>
+      </div>
+
+      <!-- Room navigation -->
+      <div class="room-nav-bar" id="roomNavBar">
+        <button class="room-arrow-btn" onclick="window.switchRoomDir(-1)">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <span class="room-nav-name" id="roomNavName">Living Room</span>
+        <button class="room-arrow-btn" onclick="window.switchRoomDir(1)">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+
+      <!-- Koala away message -->
+      <div class="koala-away-msg" id="koalaAwayMsg">
+        <svg viewBox="0 0 50 60" width="48" height="58" fill="none" opacity="0.4">
+          <ellipse cx="14" cy="10" rx="8" ry="8" fill="#8E8E8E"/>
+          <ellipse cx="36" cy="10" rx="8" ry="8" fill="#8E8E8E"/>
+          <ellipse cx="25" cy="22" rx="14" ry="12" fill="#A0A0A0"/>
+          <ellipse cx="25" cy="40" rx="12" ry="10" fill="#A0A0A0"/>
+        </svg>
+        <div class="koala-away-text">Out on adventure!</div>
+      </div>
+
+      <!-- Kitchen room overlay -->
+      <div class="room-scene-overlay" id="kitchenScene">
+        <svg class="kitchen-svg-scene" viewBox="0 0 390 273" width="100%" height="100%" preserveAspectRatio="xMidYMax meet" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Wall background - warm cream tiles -->
+          <rect width="390" height="273" fill="#F5F0E8"/>
+          <!-- Tile grid on wall -->
+          <line x1="0" y1="60" x2="390" y2="60" stroke="#E8E0D0" stroke-width="1"/>
+          <line x1="0" y1="120" x2="390" y2="120" stroke="#E8E0D0" stroke-width="1"/>
+          <line x1="0" y1="180" x2="390" y2="180" stroke="#E8E0D0" stroke-width="1"/>
+          <line x1="65" y1="0" x2="65" y2="180" stroke="#E8E0D0" stroke-width="1"/>
+          <line x1="130" y1="0" x2="130" y2="180" stroke="#E8E0D0" stroke-width="1"/>
+          <line x1="195" y1="0" x2="195" y2="180" stroke="#E8E0D0" stroke-width="1"/>
+          <line x1="260" y1="0" x2="260" y2="180" stroke="#E8E0D0" stroke-width="1"/>
+          <line x1="325" y1="0" x2="325" y2="180" stroke="#E8E0D0" stroke-width="1"/>
+          <!-- Window above sink - center top -->
+          <rect x="155" y="8" width="80" height="55" rx="4" fill="#C8E8F8" stroke="#8B7355" stroke-width="3"/>
+          <line x1="195" y1="8" x2="195" y2="63" stroke="#8B7355" stroke-width="2"/>
+          <line x1="155" y1="36" x2="235" y2="36" stroke="#8B7355" stroke-width="2"/>
+          <rect x="158" y="11" width="35" height="23" rx="2" fill="#E8F4FF" opacity=".6"/>
+          <rect x="198" y="11" width="35" height="23" rx="2" fill="#E8F4FF" opacity=".6"/>
+          <!-- Upper left cabinet -->
+          <rect x="8" y="8" width="130" height="90" rx="5" fill="#8B6F47" stroke="#7A5F3A" stroke-width="2"/>
+          <rect x="14" y="14" width="52" height="78" rx="3" fill="#9A7D55"/>
+          <rect x="72" y="14" width="60" height="78" rx="3" fill="#9A7D55"/>
+          <circle cx="40" cy="53" r="4" fill="#C4A870"/>
+          <circle cx="102" cy="53" r="4" fill="#C4A870"/>
+          <!-- Upper right cabinet (stops at x=338, fridge at x=340) -->
+          <rect x="252" y="8" width="86" height="90" rx="5" fill="#8B6F47" stroke="#7A5F3A" stroke-width="2"/>
+          <rect x="258" y="14" width="34" height="78" rx="3" fill="#9A7D55"/>
+          <rect x="298" y="14" width="30" height="78" rx="3" fill="#9A7D55"/>
+          <circle cx="275" cy="53" r="4" fill="#C4A870"/>
+          <circle cx="313" cy="53" r="4" fill="#C4A870"/>
+          <!-- Counter top - spans full width -->
+          <rect x="0" y="180" width="390" height="14" rx="3" fill="#D4C4A8" stroke="#B8A888" stroke-width="1"/>
+          <rect x="0" y="180" width="390" height="4" rx="2" fill="#E8DCC8" opacity=".6"/>
+          <!-- Left lower cabinets -->
+          <rect x="0" y="194" width="170" height="79" fill="#8B6F47"/>
+          <rect x="5" y="199" width="75" height="68" rx="3" fill="#9A7D55"/>
+          <rect x="87" y="199" width="77" height="68" rx="3" fill="#9A7D55"/>
+          <circle cx="42" cy="233" r="5" fill="#C4A870"/>
+          <circle cx="126" cy="233" r="5" fill="#C4A870"/>
+          <!-- Stove / oven (center) -->
+          <rect x="155" y="155" width="80" height="40" rx="3" fill="#4A4A4A"/>
+          <rect x="162" y="162" width="66" height="26" rx="2" fill="#2A2A2A"/>
+          <rect x="164" y="164" width="62" height="22" rx="1" fill="#1A1A1A" opacity=".8"/>
+          <rect x="172" y="168" width="46" height="14" rx="2" fill="#FFA040" opacity=".15"/>
+          <!-- Burners -->
+          <ellipse cx="175" cy="183" rx="12" ry="6" fill="#333"/>
+          <ellipse cx="175" cy="183" rx="8" ry="4" fill="#555"/>
+          <ellipse cx="175" cy="183" rx="4" ry="2" fill="#E85020" opacity=".7"/>
+          <ellipse cx="215" cy="183" rx="12" ry="6" fill="#333"/>
+          <ellipse cx="215" cy="183" rx="8" ry="4" fill="#555"/>
+          <!-- Right lower cabinets (stops at x=338, fridge at x=340) -->
+          <rect x="220" y="194" width="118" height="79" fill="#8B6F47"/>
+          <rect x="225" y="199" width="50" height="68" rx="3" fill="#9A7D55"/>
+          <rect x="281" y="199" width="52" height="68" rx="3" fill="#9A7D55"/>
+          <circle cx="250" cy="233" r="5" fill="#C4A870"/>
+          <circle cx="307" cy="233" r="5" fill="#C4A870"/>
+          <!-- Sink -->
+          <rect x="158" y="194" width="74" height="40" rx="4" fill="#A89878"/>
+          <rect x="164" y="200" width="62" height="28" rx="3" fill="#B0A080"/>
+          <rect x="190" y="185" width="10" height="16" rx="3" fill="#B0A080"/>
+          <rect x="186" y="185" width="18" height="5" rx="2" fill="#C0B090"/>
+          <ellipse cx="195" cy="204" rx="2" ry="3" fill="#C8E8F8" opacity=".7"/>
+          <!-- Fridge -->
+          <rect x="340" y="68" width="50" height="126" rx="6" fill="#EFEFEF" stroke="#CCCCCC" stroke-width="2"/>
+          <line x1="340" y1="118" x2="390" y2="118" stroke="#CCCCCC" stroke-width="2"/>
+          <rect x="352" y="80" width="5" height="28" rx="2.5" fill="#AAAAAA"/>
+          <rect x="352" y="126" width="5" height="22" rx="2.5" fill="#AAAAAA"/>
+          <rect x="357" y="85" width="20" height="8" rx="2" fill="#DDDDDD"/>
+          <rect x="342" y="120" width="46" height="72" rx="4" fill="#E8E8E8"/>
+          <!-- Pot on left burner with steam -->
+          <ellipse cx="175" cy="176" rx="20" ry="8" fill="#777"/>
+          <rect x="156" y="162" width="38" height="16" rx="4" fill="#888"/>
+          <ellipse cx="175" cy="162" rx="20" ry="5" fill="#666"/>
+          <path d="M165 158 Q163 150 165 142" stroke="rgba(200,200,200,0.7)" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <path d="M175 156 Q173 147 175 138" stroke="rgba(200,200,200,0.7)" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <path d="M185 158 Q183 150 185 142" stroke="rgba(200,200,200,0.7)" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <!-- Cooking koala WITH chef hat — shifted right 30px, down 14px to sit on counter -->
+          <g transform="translate(30,14)">
+          <rect x="108" y="95" width="26" height="6" rx="3" fill="#FFF" stroke="#DDD" stroke-width="1"/>
+          <rect x="112" y="68" width="18" height="30" rx="8" fill="#FFF" stroke="#DDD" stroke-width="1"/>
+          <!-- Body with belly -->
+          <ellipse cx="121" cy="145" rx="20" ry="18" fill="#ABABAB"/>
+          <ellipse cx="121" cy="149" rx="13" ry="12" fill="#DCD4CC"/>
+          <!-- Arms clearly attached -->
+          <ellipse cx="102" cy="138" rx="7" ry="11" fill="#9A9A9A" transform="rotate(-15 102 138)"/>
+          <ellipse cx="140" cy="136" rx="7" ry="11" fill="#9A9A9A" transform="rotate(15 140 136)"/>
+          <!-- Head (overlaps body top) -->
+          <ellipse cx="121" cy="122" rx="18" ry="16" fill="#ABABAB"/>
+          <ellipse cx="121" cy="126" rx="12" ry="10" fill="#EAE2DA"/>
+          <!-- Ears -->
+          <ellipse cx="107" cy="112" rx="10" ry="10" fill="#9A9A9A"/>
+          <ellipse cx="107" cy="112" rx="6" ry="6" fill="#C9A882"/>
+          <ellipse cx="135" cy="112" rx="10" ry="10" fill="#9A9A9A"/>
+          <ellipse cx="135" cy="112" rx="6" ry="6" fill="#C9A882"/>
+          <!-- Eyes -->
+          <ellipse cx="115" cy="120" rx="2.8" ry="3.2" fill="#3D3229"/>
+          <circle cx="114" cy="119" r="1.1" fill="#fff" opacity=".9"/>
+          <ellipse cx="127" cy="120" rx="2.8" ry="3.2" fill="#3D3229"/>
+          <circle cx="126" cy="119" r="1.1" fill="#fff" opacity=".9"/>
+          <!-- Nose & smile -->
+          <ellipse cx="121" cy="125" rx="4" ry="2.8" fill="#5C4A3A"/>
+          <path d="M116 128 Q121 132 126 128" stroke="#5C4A3A" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+          <!-- Spatula arm (reaching toward pot) -->
+          <line x1="140" y1="142" x2="155" y2="158" stroke="#8B6020" stroke-width="3" stroke-linecap="round"/>
+          <ellipse cx="157" cy="161" rx="5" ry="4" fill="#8B6020"/>
+          <!-- Apron -->
+          <rect x="113" y="133" width="16" height="20" rx="3" fill="#E8E0D8" opacity=".8"/>
+          </g>
+        </svg>
+        <div class="kitchen-speech" id="kitchenSpeech">Cooking!</div>
+      </div>
+
+      <!-- Bedroom room overlay -->
+      <div class="room-scene-overlay" id="bedroomScene">
+        <svg class="bedroom-svg-scene" viewBox="0 0 390 273" width="100%" height="100%" preserveAspectRatio="xMidYMax meet" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Wall - soft lavender/blue -->
+          <rect width="390" height="200" fill="#E8EAF0"/>
+          <line x1="0" y1="80" x2="390" y2="80" stroke="#DDE0E8" stroke-width="1" opacity=".5"/>
+          <line x1="0" y1="160" x2="390" y2="160" stroke="#DDE0E8" stroke-width="1" opacity=".5"/>
+          <!-- Moon + stars on wall -->
+          <circle cx="340" cy="40" r="18" fill="#F5D060" opacity=".3"/>
+          <circle cx="352" cy="34" r="14" fill="#E8EAF0" opacity=".8"/>
+          <circle cx="50" cy="30" r="2" fill="#F5D060" opacity=".5"/>
+          <circle cx="80" cy="15" r="1.5" fill="#F5D060" opacity=".4"/>
+          <circle cx="65" cy="55" r="1.5" fill="#F5D060" opacity=".3"/>
+          <circle cx="310" cy="20" r="1.5" fill="#F5D060" opacity=".4"/>
+          <!-- Wall art -->
+          <rect x="155" y="20" width="80" height="55" rx="4" fill="#FFF8F0" stroke="#A08060" stroke-width="4"/>
+          <ellipse cx="195" cy="50" rx="22" ry="18" fill="#A8C8E0" opacity=".6"/>
+          <ellipse cx="195" cy="62" rx="28" ry="8" fill="#7B9A6A" opacity=".5"/>
+          <circle cx="195" cy="40" r="7" fill="#FFD070" opacity=".5"/>
+          <!-- Wood floor -->
+          <rect x="0" y="200" width="390" height="73" fill="#C4A878"/>
+          <rect x="0" y="197" width="390" height="5" fill="#B09060"/>
+          <line x1="0" y1="220" x2="390" y2="220" stroke="#9A7848" stroke-width="1" opacity=".4"/>
+          <line x1="0" y1="240" x2="390" y2="240" stroke="#9A7848" stroke-width="1" opacity=".4"/>
+          <line x1="0" y1="260" x2="390" y2="260" stroke="#9A7848" stroke-width="1" opacity=".4"/>
+          <line x1="80" y1="197" x2="80" y2="273" stroke="#9A7848" stroke-width="1" opacity=".3"/>
+          <line x1="175" y1="197" x2="175" y2="273" stroke="#9A7848" stroke-width="1" opacity=".3"/>
+          <line x1="270" y1="197" x2="270" y2="273" stroke="#9A7848" stroke-width="1" opacity=".3"/>
+          <!-- Area rug -->
+          <ellipse cx="175" cy="225" rx="100" ry="28" fill="#9B7EC8" opacity=".35"/>
+          <ellipse cx="175" cy="225" rx="85" ry="22" fill="#B090D8" opacity=".2"/>
+          <!-- BED -->
+          <rect x="18" y="208" width="10" height="20" rx="3" fill="#6B4F2E"/>
+          <rect x="242" y="208" width="10" height="20" rx="3" fill="#6B4F2E"/>
+          <rect x="18" y="192" width="236" height="22" rx="4" fill="#8B6F47"/>
+          <rect x="18" y="152" width="236" height="48" rx="4" fill="#F0EBE0"/>
+          <rect x="12" y="105" width="248" height="55" rx="8" fill="#6B4F2E"/>
+          <rect x="20" y="112" width="106" height="40" rx="6" fill="#7A5C36"/>
+          <rect x="134" y="112" width="118" height="40" rx="6" fill="#7A5C36"/>
+          <rect x="12" y="102" width="248" height="8" rx="4" fill="#8B6020"/>
+          <!-- Pillows -->
+          <rect x="28" y="148" width="96" height="34" rx="10" fill="#FFFFFF" stroke="#E8E0D8" stroke-width="2"/>
+          <rect x="130" y="148" width="96" height="34" rx="10" fill="#F8F0E8" stroke="#E8E0D8" stroke-width="2"/>
+          <line x1="76" y1="150" x2="76" y2="180" stroke="#E8E0D8" stroke-width="1" opacity=".6"/>
+          <line x1="178" y1="150" x2="178" y2="180" stroke="#E8E0D8" stroke-width="1" opacity=".6"/>
+          <!-- Blanket -->
+          <rect x="18" y="172" width="236" height="28" rx="6" fill="#5B8DB8"/>
+          <line x1="65" y1="172" x2="65" y2="200" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+          <line x1="118" y1="172" x2="118" y2="200" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+          <line x1="171" y1="172" x2="171" y2="200" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+          <line x1="224" y1="172" x2="224" y2="200" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+          <rect x="18" y="172" width="236" height="8" rx="4" fill="#6B9DC8" opacity=".7"/>
+          <!-- Koala sleeping — tucked in bed, head on pillow -->
+          <ellipse cx="102" cy="170" rx="11" ry="11" fill="#8E8E8E"/>
+          <ellipse cx="102" cy="170" rx="6.5" ry="6.5" fill="#C9A882"/>
+          <ellipse cx="128" cy="167" rx="11" ry="11" fill="#8E8E8E"/>
+          <ellipse cx="128" cy="167" rx="6.5" ry="6.5" fill="#C9A882"/>
+          <ellipse cx="115" cy="175" rx="23" ry="19" fill="#ABABAB"/>
+          <ellipse cx="115" cy="179" rx="15" ry="11" fill="#EAE2DA"/>
+          <path d="M106 172 Q109 170 112 172" stroke="#3D3229" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          <path d="M118 172 Q121 170 124 172" stroke="#3D3229" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          <ellipse cx="115" cy="177" rx="3.5" ry="2.2" fill="#5C4A3A"/>
+          <path d="M111 180 Q115 183 119 180" stroke="#5C4A3A" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+          <ellipse cx="104" cy="179" rx="5" ry="2.5" fill="#F0B8B8" opacity=".5"/>
+          <ellipse cx="126" cy="179" rx="5" ry="2.5" fill="#F0B8B8" opacity=".5"/>
+          <!-- ZZZ floating up -->
+          <text x="142" y="162" font-family="Arial" font-size="14" fill="#9090C0" opacity=".65" font-weight="bold">z</text>
+          <text x="153" y="152" font-family="Arial" font-size="11" fill="#9090C0" opacity=".45" font-weight="bold">z</text>
+          <text x="162" y="144" font-family="Arial" font-size="9" fill="#9090C0" opacity=".3" font-weight="bold">z</text>
+          <!-- Nightstand -->
+          <rect x="268" y="178" width="56" height="36" rx="5" fill="#7A5C36"/>
+          <rect x="273" y="183" width="46" height="26" rx="3" fill="#8B6F47"/>
+          <rect x="277" y="192" width="38" height="12" rx="2" fill="#9A7D55" stroke="#7A5C36" stroke-width="1"/>
+          <circle cx="296" cy="198" r="2.5" fill="#C4A870"/>
+          <rect x="270" y="210" width="6" height="14" rx="2" fill="#6B4F2E"/>
+          <rect x="316" y="210" width="6" height="14" rx="2" fill="#6B4F2E"/>
+          <!-- Bedside lamp -->
+          <rect x="286" y="170" width="12" height="10" rx="2" fill="#A08060"/>
+          <rect x="290" y="148" width="4" height="24" rx="2" fill="#B09070"/>
+          <path d="M278 148 L302 148 L298 165 L282 165 Z" fill="#F5E8C0" stroke="#D4C080" stroke-width="1.5"/>
+          <ellipse cx="292" cy="160" rx="20" ry="12" fill="#FFE880" opacity=".15"/>
+          <!-- Bedroom lamp glow -->
+          <ellipse id="bedroomLampGlowSvg" cx="292" cy="160" rx="40" ry="25" fill="#FFE880" opacity="0"/>
+        </svg>
+        <div class="bedroom-decor-layer" id="bedroomDecorLayer"></div>
+        <div class="bedroom-lamp-glow" id="bedroomLampGlow"></div>
+        <div class="bedroom-koala-label-wrap">
+          <div class="bedroom-koala-label">Resting...</div>
+        </div>
+      </div>
+
+    </div><!-- /room-container -->
+
+    <!-- Adventure active banner -->
+    <div class="adv-active-banner" id="advActiveBanner" onclick="openPanic()">
+      <div class="adv-banner-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none"><path d="M17 8C8 10 5.9 16.17 3.82 19.5c1.68-1.17 3.82-1.5 5.18-1.5 4 0 4 2 8 2s4-2 8-2V8z" fill="#4CAF50"/><path d="M3.82 19.5C2.96 20.92 2 23 2 23c0-1 .17-3.14 1.82-3.5z" fill="#388E3C"/></svg></div>
+      <div class="adv-banner-text">
+        <div class="adv-banner-title" id="advBannerTitle">Adventure in progress!</div>
+        <div class="adv-banner-sub" id="advBannerSub">Your koala is exploring...</div>
+        <div class="adv-banner-progress"><div class="adv-banner-bar" id="advBannerBar" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <!-- Energy Bar (health bar removed) -->
+    <div class="stats-bar-section" id="statsBarSection">
+      <div class="stat-bar-row single-bar">
+        <div class="stat-bar-group" style="flex:1">
+          <div class="health-bar-label">
+            <span class="health-label-text energy-label">Energy</span>
+            <span class="health-pct energy-pct" id="energyPct">50%</span>
+          </div>
+          <div class="health-bar-track">
+            <div class="energy-bar-fill" id="energyBarFill" style="width:50%"></div>
+          </div>
+        </div>
+      </div>
+      <div class="mood-row">
+        <div class="mood-indicator" id="moodIndicator">
+          <span class="mood-emoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" width="16" height="16" style="vertical-align:middle"><circle fill="#FFCC4D" cx="18" cy="18" r="16"/><circle fill="#664500" cx="12" cy="14" r="2"/><circle fill="#664500" cx="24" cy="14" r="2"/><path fill="none" stroke="#664500" stroke-width="2" stroke-linecap="round" d="M10 20q8 8 16 0"/><circle fill="#FF7A94" cx="8" cy="19" r="3" opacity="0.5"/><circle fill="#FF7A94" cx="28" cy="19" r="3" opacity="0.5"/></svg></span>
+          <span class="mood-text">Happy</span>
+        </div>
+        <div class="memory-message" id="memoryMessage" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- Feed Koala Button (shown when energy < 100%) -->
+    <div class="feed-koala-section" id="feedKoalaSection">
+      <button class="feed-koala-btn" id="feedKoalaBtn" onclick="openFeedOverlay()" style="display:none">
+        <svg viewBox="0 0 44 48" width="18" height="18" fill="none" aria-hidden="true">
+          <ellipse cx="22" cy="28" rx="15" ry="19" fill="#fff" transform="rotate(-15 22 28)"/>
+          <path d="M22 46 Q18 34 13 20" stroke="rgba(255,255,255,.7)" stroke-width="3" fill="none" stroke-linecap="round"/>
+        </svg>
+        <span id="feedBtnLabel">Feed Koala</span>
+        <span class="feed-btn-energy" id="feedBtnEnergy"></span>
+      </button>
+    </div>
+
+    <!-- Goal display -->
+    <div class="goal-section">
+      <div class="goal-divider"><span class="goal-label">TODAY'S GOAL</span></div>
+      <div class="goal-time-row">
+        <span class="goal-prefix">Stay under</span>
+        <span class="goal-time" id="goalDisplay">2h 30m</span>
+      </div>
+      <button class="goal-edit" onclick="openGoalSheet()" aria-label="Edit goal">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+          <path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+        Edit Goal
+      </button>
+      <div class="streak-mini-wrap" id="streakMini" style="display:none">
+        <div class="streak-mini">
+          <span class="streak-flame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" width="16" height="16" style="vertical-align:middle"><path fill="#F4900C" d="M18 2c0 0-8 9-8 18a8 8 0 0 0 16 0C26 11 18 2 18 2z"/><path fill="#FFCC4D" d="M18 8c0 0-5 6-5 13a5 5 0 0 0 10 0C23 14 18 8 18 8z"/><path fill="#FFAC33" d="M18 14c0 0-3 4-3 8a3 3 0 0 0 6 0C21 18 18 14 18 14z"/></svg></span>
+          <span class="streak-text" id="streakMiniText"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="main-buttons">
+      <button class="checkin-btn" id="checkinBtn" onclick="openCheckin()">
+        <span class="btn-shine"></span>Check In
+      </button>
+      <div class="btn-row">
+        <button class="focus-btn" onclick="openFocusMode()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          Focus Mode
+        </button>
+        <button class="panic-btn adventure-btn" onclick="openPanic()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <polygon points="12 2 15.5 8.5 23 9.5 17.5 14.8 19 22 12 18.3 5 22 6.5 14.8 1 9.5 8.5 8.5 12 2"/>
+          </svg>
+          Adventure Mode
+        </button>
+      </div>
+    </div>
+
+    <!-- Sick Overlay — shown when energy = 0 -->
+    <div id="sickOverlay" style="display:none;position:absolute;bottom:0;left:0;right:0;top:0;background:rgba(0,0,0,0.55);z-index:800;display:none;flex-direction:column;align-items:center;justify-content:center;padding:16px">
+      <div style="background:#fff;border-radius:24px;padding:18px 20px;max-width:320px;width:100%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.25)">
+        <div style="margin-bottom:6px">
+          <svg viewBox="0 0 100 110" fill="none" width="60" height="66">
+            <ellipse cx="50" cy="76" rx="24" ry="22" fill="#B0B0B0"/>
+            <ellipse cx="50" cy="79" rx="16" ry="15" fill="#D8D0C8"/>
+            <ellipse cx="17" cy="21" rx="15" ry="15" fill="#A0A0A0"/>
+            <ellipse cx="17" cy="21" rx="9" ry="9" fill="#C9A882"/>
+            <ellipse cx="83" cy="21" rx="15" ry="15" fill="#A0A0A0"/>
+            <ellipse cx="83" cy="21" rx="9" ry="9" fill="#C9A882"/>
+            <ellipse cx="50" cy="38" rx="28" ry="25" fill="#B0B0B0"/>
+            <ellipse cx="50" cy="43" rx="18" ry="14" fill="#EAE2DA"/>
+            <!-- X eyes (sick) -->
+            <line x1="37" y1="34" x2="43" y2="40" stroke="#3D3229" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="43" y1="34" x2="37" y2="40" stroke="#3D3229" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="57" y1="34" x2="63" y2="40" stroke="#3D3229" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="63" y1="34" x2="57" y2="40" stroke="#3D3229" stroke-width="2.5" stroke-linecap="round"/>
+            <ellipse cx="50" cy="46" rx="5.5" ry="3.8" fill="#5C4A3A"/>
+            <!-- Wavy sick mouth -->
+            <path d="M44 51 Q47 49 50 51 Q53 53 56 51" stroke="#5C4A3A" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+            <!-- Band-aids -->
+            <rect x="30" y="44" width="10" height="5" rx="2" fill="#F4C2C2" opacity="0.9"/>
+            <rect x="31.5" y="45.5" width="1.5" height="2" fill="#E88" opacity="0.6"/>
+            <rect x="34.5" y="45.5" width="1.5" height="2" fill="#E88" opacity="0.6"/>
+            <ellipse cx="26" cy="72" rx="8" ry="11" fill="#9E9E9E" transform="rotate(-10 26 72)"/>
+            <ellipse cx="74" cy="72" rx="8" ry="11" fill="#9E9E9E" transform="rotate(10 74 72)"/>
+            <ellipse cx="38" cy="96" rx="10" ry="6.5" fill="#9E9E9E"/>
+            <ellipse cx="62" cy="96" rx="10" ry="6.5" fill="#9E9E9E"/>
+          </svg>
+        </div>
+        <div style="font-size:18px;font-weight:800;color:#333;margin-bottom:4px">Your koala got sick!</div>
+        <div style="font-size:13px;color:#666;margin-bottom:12px;line-height:1.4">Energy ran out. Pay 30 coins to heal, or check in to earn coins first.</div>
+        <div style="font-size:13px;color:#888;margin-bottom:12px">Your coins: <strong id="sickCoinsDisplay" style="color:#E8B84B">0</strong></div>
+        <button onclick="healKoala()" style="background:#7CB97A;color:white;border:none;border-radius:14px;padding:13px 32px;font-size:15px;font-weight:800;width:100%;cursor:pointer;font-family:inherit">Heal for 30 coins</button>
+        <button onclick="openCheckin()" style="background:#F0F0F0;color:#333;border:none;border-radius:14px;padding:11px 32px;font-size:14px;font-weight:700;width:100%;cursor:pointer;font-family:inherit;margin-top:8px">Check In to Earn Coins</button>
+      </div>
+    </div>
+
+  </div><!-- /screenHome -->
+
+  <!-- ===== SHOP SCREEN ===== -->
+  <div class="screen" id="screenShop">
+    <div class="shop-content">
+      <!-- Eucalyptus Leaves (top of shop) -->
+      <div class="shop-category leaves-shop-category">
+        <div class="shop-cat-label">
+          <svg viewBox="0 0 16 16" width="13" height="13" fill="none" style="vertical-align:middle;margin-right:4px"><path d="M8 1C10.2 2.8 14 5.8 14 9.8C14 13 11.3 15 8 15C4.7 15 2 13 2 9.8C2 5.8 5.8 2.8 8 1Z" fill="#4CAF50"/><path d="M8 15 Q7.2 11.5 6.5 8.5" stroke="#1B5E20" stroke-width="1.1" fill="none" stroke-linecap="round"/></svg>
+          <span id="shopFoodLabel">Eucalyptus Leaves</span>
+        </div>
+        <div id="leavesBuySection"></div>
+      </div>
+
+      <div class="section-header">Koala's Room</div>
+      <div class="section-sub">Decorate the cozy space</div>
+      <div class="shop-category">
+        <div class="shop-cat-label">Room Items</div>
+        <div class="shop-grid" id="shopGrid"></div>
+      </div>
+      <div class="shop-category">
+        <div class="shop-cat-label">Focus Rewards</div>
+        <div id="focusRewardsList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PROGRESS SCREEN ===== -->
+  <div class="screen" id="screenProgress">
+    <div class="progress-content">
+      <div class="section-header">Your Journey</div>
+      <div class="section-sub">Every day counts</div>
+      <div class="streak-card">
+        <span class="streak-big-flame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" width="40" height="40" style="vertical-align:middle"><path fill="#F4900C" d="M18 2c0 0-8 9-8 18a8 8 0 0 0 16 0C26 11 18 2 18 2z"/><path fill="#FFCC4D" d="M18 8c0 0-5 6-5 13a5 5 0 0 0 10 0C23 14 18 8 18 8z"/><path fill="#FFAC33" d="M18 14c0 0-3 4-3 8a3 3 0 0 0 6 0C21 18 18 14 18 14z"/></svg></span>
+        <div class="streak-big-num" id="streakNum">0</div>
+        <div class="streak-big-label">day streak</div>
+        <div class="milestones-row" id="milestones"></div>
+      </div>
+      <div class="prog-card" id="xpBondSection"></div>
+      <div class="prog-card">
+        <div class="prog-card-title">This Week</div>
+        <div class="week-row" id="weekRow"></div>
+      </div>
+      <div class="prog-card">
+        <div class="prog-card-title">Analytics</div>
+        <div id="analyticsSection"></div>
+      </div>
+      <div class="prog-card">
+        <div class="prog-card-title">Focus Sessions</div>
+        <div id="focusStatsSection"></div>
+      </div>
+      <div class="prog-card">
+        <div class="prog-card-title">Goal History</div>
+        <div class="goal-log-list" id="goalLogList"></div>
+      </div>
+      <div class="prog-card">
+        <div class="prog-card-title">Recent Check-ins</div>
+        <div id="historyList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PREMIUM SCREEN ===== -->
+  <div class="screen" id="screenPremium">
+    <div class="premium-screen-scroll">
+
+      <!-- SUBSCRIBED VIEW -->
+      <div id="premiumActiveView" style="display:none">
+        <div class="premium-active-header">
+          <div class="premium-active-badge">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            Premium Active
+          </div>
+          <div class="premium-renews-text" id="premiumRenewsText">Renews soon</div>
+        </div>
+
+        <div class="premium-section-title">Exclusive Koala Skins</div>
+        <div class="skin-grid">
+          <div class="skin-card selected" data-skin="default" onclick="selectKoalaSkin('default')">
+            <div class="skin-bg" style="background:linear-gradient(135deg,#F0EDE8,#E2DDD8)">
+              <svg viewBox="0 0 100 108" width="82" height="82"><ellipse cx="50" cy="90" rx="26" ry="16" fill="#A8A8A8" opacity=".3"/><ellipse cx="50" cy="78" rx="22" ry="26" fill="#B0B0B0"/><ellipse cx="30" cy="40" rx="16" ry="14" fill="#A8A8A8"/><ellipse cx="70" cy="40" rx="16" ry="14" fill="#A8A8A8"/><ellipse cx="30" cy="40" rx="10" ry="9" fill="#D4B896"/><ellipse cx="70" cy="40" rx="10" ry="9" fill="#D4B896"/><circle cx="50" cy="58" r="24" fill="#D0D0D0"/><ellipse cx="50" cy="70" rx="14" ry="11" fill="#EBEBEB"/><ellipse cx="50" cy="64" rx="10" ry="8" fill="#8C7B6E"/><circle cx="42" cy="54" r="5" fill="white"/><circle cx="58" cy="54" r="5" fill="white"/><circle cx="43" cy="55" r="3" fill="#111"/><circle cx="59" cy="55" r="3" fill="#111"/><circle cx="44" cy="54" r="1" fill="white"/><circle cx="60" cy="54" r="1" fill="white"/><ellipse cx="44" cy="62" rx="3" ry="2" fill="#C49080" opacity=".6"/><ellipse cx="56" cy="62" rx="3" ry="2" fill="#C49080" opacity=".6"/></svg>
+            </div>
+            <div class="skin-info">
+              <div class="skin-name">Classic</div>
+              <div class="skin-badge default-badge" id="skinBadge_default">Equipped</div>
+            </div>
+          </div>
+          <div class="skin-card" data-skin="golden" onclick="selectKoalaSkin('golden')">
+            <div class="skin-bg" style="background:linear-gradient(135deg,#FFF8DC,#FFE066)">
+              <svg viewBox="0 0 100 108" width="82" height="82"><ellipse cx="50" cy="90" rx="26" ry="16" fill="#A07820" opacity=".3"/><ellipse cx="50" cy="78" rx="22" ry="26" fill="#C8922A"/><ellipse cx="30" cy="40" rx="16" ry="14" fill="#B07820"/><ellipse cx="70" cy="40" rx="16" ry="14" fill="#B07820"/><ellipse cx="30" cy="40" rx="10" ry="9" fill="#F5D080"/><ellipse cx="70" cy="40" rx="10" ry="9" fill="#F5D080"/><circle cx="50" cy="58" r="24" fill="#E8B830"/><ellipse cx="50" cy="70" rx="14" ry="11" fill="#FFF0B0"/><ellipse cx="50" cy="64" rx="10" ry="8" fill="#9A6820"/><circle cx="42" cy="54" r="5" fill="white"/><circle cx="58" cy="54" r="5" fill="white"/><circle cx="43" cy="55" r="3" fill="#111"/><circle cx="59" cy="55" r="3" fill="#111"/><circle cx="44" cy="54" r="1" fill="white"/><circle cx="60" cy="54" r="1" fill="white"/><ellipse cx="44" cy="62" rx="3" ry="2" fill="#E09040" opacity=".7"/><ellipse cx="56" cy="62" rx="3" ry="2" fill="#E09040" opacity=".7"/></svg>
+            </div>
+            <div class="skin-info">
+              <div class="skin-name">Golden</div>
+              <div class="skin-badge premium-badge-sm" id="skinBadge_golden">Premium</div>
+            </div>
+          </div>
+          <div class="skin-card" data-skin="midnight" onclick="selectKoalaSkin('midnight')">
+            <div class="skin-bg" style="background:linear-gradient(135deg,#1A1A3A,#2E2E5A)">
+              <svg viewBox="0 0 100 108" width="82" height="82"><ellipse cx="50" cy="90" rx="26" ry="16" fill="#0A0A20" opacity=".5"/><ellipse cx="50" cy="78" rx="22" ry="26" fill="#1E1E3A"/><ellipse cx="30" cy="40" rx="16" ry="14" fill="#161630"/><ellipse cx="70" cy="40" rx="16" ry="14" fill="#161630"/><ellipse cx="30" cy="40" rx="10" ry="9" fill="#4A4A80"/><ellipse cx="70" cy="40" rx="10" ry="9" fill="#4A4A80"/><circle cx="50" cy="58" r="24" fill="#28285A"/><ellipse cx="50" cy="70" rx="14" ry="11" fill="#4A4A80"/><ellipse cx="50" cy="64" rx="10" ry="8" fill="#0E0E28"/><circle cx="42" cy="54" r="5" fill="white"/><circle cx="58" cy="54" r="5" fill="white"/><circle cx="43" cy="55" r="3" fill="#1A0050"/><circle cx="59" cy="55" r="3" fill="#1A0050"/><circle cx="44" cy="54" r="1.5" fill="#A78BFA"/><circle cx="60" cy="54" r="1.5" fill="#A78BFA"/><ellipse cx="44" cy="62" rx="3" ry="2" fill="#7070C0" opacity=".7"/><ellipse cx="56" cy="62" rx="3" ry="2" fill="#7070C0" opacity=".7"/></svg>
+            </div>
+            <div class="skin-info">
+              <div class="skin-name">Midnight</div>
+              <div class="skin-badge premium-badge-sm" id="skinBadge_midnight">Premium</div>
+            </div>
+          </div>
+          <div class="skin-card" data-skin="sakura" onclick="selectKoalaSkin('sakura')">
+            <div class="skin-bg" style="background:linear-gradient(135deg,#FDE8EE,#F9C0D0)">
+              <svg viewBox="0 0 100 108" width="82" height="82"><ellipse cx="50" cy="90" rx="26" ry="16" fill="#A04060" opacity=".3"/><ellipse cx="50" cy="78" rx="22" ry="26" fill="#D4748A"/><ellipse cx="30" cy="40" rx="16" ry="14" fill="#C05870"/><ellipse cx="70" cy="40" rx="16" ry="14" fill="#C05870"/><ellipse cx="30" cy="40" rx="10" ry="9" fill="#F8C8D8"/><ellipse cx="70" cy="40" rx="10" ry="9" fill="#F8C8D8"/><circle cx="50" cy="58" r="24" fill="#ECA0B4"/><ellipse cx="50" cy="70" rx="14" ry="11" fill="#FDE8F0"/><ellipse cx="50" cy="64" rx="10" ry="8" fill="#A04060"/><circle cx="42" cy="54" r="5" fill="white"/><circle cx="58" cy="54" r="5" fill="white"/><circle cx="43" cy="55" r="3" fill="#4A1020"/><circle cx="59" cy="55" r="3" fill="#4A1020"/><circle cx="44" cy="54" r="1" fill="white"/><circle cx="60" cy="54" r="1" fill="white"/><ellipse cx="44" cy="62" rx="3" ry="2" fill="#E080A0" opacity=".7"/><ellipse cx="56" cy="62" rx="3" ry="2" fill="#E080A0" opacity=".7"/></svg>
+            </div>
+            <div class="skin-info">
+              <div class="skin-name">Sakura</div>
+              <div class="skin-badge premium-badge-sm" id="skinBadge_sakura">Premium</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="premium-section-title" style="margin-top:16px">Companion Animal</div>
+        <div class="animal-selector-grid">
+          <div class="animal-selector-card selected" data-animal="koala" onclick="setSelectedAnimal('koala')">
+            <div class="animal-card-art">
+              <svg viewBox="0 0 60 60" width="52" height="52"><ellipse cx="30" cy="22" rx="17" ry="15" fill="#A0A0A0"/><ellipse cx="18" cy="13" rx="9" ry="9" fill="#8E8E8E"/><ellipse cx="42" cy="13" rx="9" ry="9" fill="#8E8E8E"/><ellipse cx="18" cy="13" rx="6" ry="6" fill="#C9A882"/><ellipse cx="42" cy="13" rx="6" ry="6" fill="#C9A882"/><ellipse cx="30" cy="26" rx="11" ry="8" fill="#EAE2DA"/><circle cx="24" cy="21" r="2.5" fill="#3D3229"/><circle cx="36" cy="21" r="2.5" fill="#3D3229"/><ellipse cx="30" cy="28" rx="4" ry="2.5" fill="#5C4A3A"/><ellipse cx="30" cy="44" rx="14" ry="13" fill="#A0A0A0"/><ellipse cx="30" cy="47" rx="9" ry="8" fill="#DCD4CC"/></svg>
+            </div>
+            <div class="animal-card-name">Koala</div>
+          </div>
+          <div class="animal-selector-card" data-animal="bear" onclick="setSelectedAnimal('bear')">
+            <div class="animal-card-art">
+              <svg viewBox="0 0 60 60" width="52" height="52"><ellipse cx="30" cy="22" rx="17" ry="15" fill="#7B5B3A"/><ellipse cx="18" cy="12" rx="8" ry="8" fill="#6B4B2A"/><ellipse cx="42" cy="12" rx="8" ry="8" fill="#6B4B2A"/><ellipse cx="18" cy="12" rx="5" ry="5" fill="#C9A882"/><ellipse cx="42" cy="12" rx="5" ry="5" fill="#C9A882"/><ellipse cx="30" cy="27" rx="12" ry="8" fill="#D4B896"/><circle cx="24" cy="21" r="2.5" fill="#1A0800"/><circle cx="36" cy="21" r="2.5" fill="#1A0800"/><ellipse cx="30" cy="29" rx="5" ry="3" fill="#3A1A00"/><ellipse cx="30" cy="44" rx="14" ry="13" fill="#7B5B3A"/><ellipse cx="30" cy="47" rx="9" ry="8" fill="#C8A880"/></svg>
+            </div>
+            <div class="animal-card-name">Bear</div>
+          </div>
+          <div class="animal-selector-card" data-animal="bunny" onclick="setSelectedAnimal('bunny')">
+            <div class="animal-card-art">
+              <svg viewBox="0 0 60 60" width="52" height="52"><ellipse cx="22" cy="8" rx="5" ry="14" fill="#D0D0D0"/><ellipse cx="38" cy="8" rx="5" ry="14" fill="#D0D0D0"/><ellipse cx="22" cy="8" rx="2.5" ry="11" fill="#F8B8C8"/><ellipse cx="38" cy="8" rx="2.5" ry="11" fill="#F8B8C8"/><ellipse cx="30" cy="26" rx="16" ry="14" fill="#E0E0E0"/><ellipse cx="30" cy="30" rx="11" ry="8" fill="#F8F8F8"/><circle cx="24" cy="22" r="2.5" fill="#4A1A4A"/><circle cx="36" cy="22" r="2.5" fill="#4A1A4A"/><ellipse cx="30" cy="31" rx="3.5" ry="2.5" fill="#D05070"/><ellipse cx="30" cy="44" rx="14" ry="13" fill="#E0E0E0"/><ellipse cx="30" cy="47" rx="9" ry="8" fill="#F2F2F2"/></svg>
+            </div>
+            <div class="animal-card-name">Bunny</div>
+          </div>
+          <div class="animal-selector-card" data-animal="dog" onclick="setSelectedAnimal('dog')">
+            <div class="animal-card-art">
+              <svg viewBox="0 0 60 60" width="52" height="52"><ellipse cx="14" cy="18" rx="7" ry="10" fill="#B8904A" transform="rotate(-20 14 18)"/><ellipse cx="46" cy="18" rx="7" ry="10" fill="#B8904A" transform="rotate(20 46 18)"/><ellipse cx="30" cy="24" rx="17" ry="14" fill="#C8A06A"/><ellipse cx="30" cy="29" rx="12" ry="8" fill="#F0E0C0"/><circle cx="24" cy="21" r="2.5" fill="#2A1800"/><circle cx="36" cy="21" r="2.5" fill="#2A1800"/><ellipse cx="30" cy="30" rx="4" ry="3" fill="#1A0A00"/><path d="M26 33 Q30 36 34 33" stroke="#1A0A00" stroke-width="1.2" fill="none" stroke-linecap="round"/><ellipse cx="30" cy="44" rx="14" ry="13" fill="#C8A06A"/><ellipse cx="30" cy="47" rx="9" ry="8" fill="#E8D4A8"/></svg>
+            </div>
+            <div class="animal-card-name">Dog</div>
+          </div>
+        </div>
+
+        <div class="premium-section-title" style="margin-top:8px">Your Benefits</div>
+        <div class="premium-benefits-list">
+          <div class="premium-benefit-row"><span class="pb-icon">+</span><span>Analytics &amp; Progress tracking</span></div>
+          <div class="premium-benefit-row"><span class="pb-icon">+</span><span>1.5× XP &amp; coin earnings</span></div>
+          <div class="premium-benefit-row"><span class="pb-icon">+</span><span>Streak protection — miss 1 day</span></div>
+          <div class="premium-benefit-row"><span class="pb-icon">+</span><span>Exclusive koala skins</span></div>
+          <div class="premium-benefit-row"><span class="pb-icon">+</span><span>Premium shop decorations</span></div>
+        </div>
+
+      </div>
+
+      <!-- NOT SUBSCRIBED VIEW -->
+      <div id="premiumUpsellView">
+        <div class="premium-upsell-hero">
+          <div class="premium-crown-wrap">
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="#FFB800" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </div>
+          <div class="premium-upsell-title">Koala Calm Premium</div>
+          <div class="premium-upsell-price">$3.99 <span>/ month</span></div>
+          <div class="premium-upsell-sub">Cancel anytime</div>
+        </div>
+
+        <div class="premium-features-list">
+          <div class="premium-feature-item">
+            <div class="pf-icon" style="background:#E8F4FD">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#2196F3" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+            </div>
+            <div class="pf-text">
+              <div class="pf-title">Analytics &amp; Progress</div>
+              <div class="pf-sub">See your full streak history, check-in calendar, and detailed stats</div>
+            </div>
+          </div>
+          <div class="premium-feature-item">
+            <div class="pf-icon" style="background:#FFF8E1">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="#FFB800" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </div>
+            <div class="pf-text">
+              <div class="pf-title">1.5× XP &amp; Coins</div>
+              <div class="pf-sub">Every check-in, focus session, and habit earns 50% more</div>
+            </div>
+          </div>
+          <div class="premium-feature-item">
+            <div class="pf-icon" style="background:#F3E5F5">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#9C27B0" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <div class="pf-text">
+              <div class="pf-title">Streak Protection</div>
+              <div class="pf-sub">Miss one day without losing your streak — once per week</div>
+            </div>
+          </div>
+          <div class="premium-feature-item">
+            <div class="pf-icon" style="background:#FCE4EC">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#E91E63" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+            </div>
+            <div class="pf-text">
+              <div class="pf-title">Exclusive Koala Skins</div>
+              <div class="pf-sub">Golden, Midnight, and Sakura koala — only for Premium members</div>
+            </div>
+          </div>
+          <div class="premium-feature-item">
+            <div class="pf-icon" style="background:#E8F5E9">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#4CAF50" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            </div>
+            <div class="pf-text">
+              <div class="pf-title">Premium Decorations</div>
+              <div class="pf-sub">Exclusive room items unlocked in the shop</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Animal preview tease -->
+        <div class="premium-section-title">Exclusive Skins — Preview</div>
+        <div class="skin-grid">
+          <div class="skin-card locked-skin" onclick="purchasePremium()">
+            <div class="skin-bg" style="background:linear-gradient(135deg,#FFF8DC,#FFE066)">
+              <svg viewBox="0 0 100 108" width="82" height="82"><ellipse cx="50" cy="90" rx="26" ry="16" fill="#A07820" opacity=".3"/><ellipse cx="50" cy="78" rx="22" ry="26" fill="#C8922A"/><ellipse cx="30" cy="40" rx="16" ry="14" fill="#B07820"/><ellipse cx="70" cy="40" rx="16" ry="14" fill="#B07820"/><ellipse cx="30" cy="40" rx="10" ry="9" fill="#F5D080"/><ellipse cx="70" cy="40" rx="10" ry="9" fill="#F5D080"/><circle cx="50" cy="58" r="24" fill="#E8B830"/><ellipse cx="50" cy="70" rx="14" ry="11" fill="#FFF0B0"/><ellipse cx="50" cy="64" rx="10" ry="8" fill="#9A6820"/><circle cx="42" cy="54" r="5" fill="white"/><circle cx="58" cy="54" r="5" fill="white"/><circle cx="43" cy="55" r="3" fill="#111"/><circle cx="59" cy="55" r="3" fill="#111"/><circle cx="44" cy="54" r="1" fill="white"/><circle cx="60" cy="54" r="1" fill="white"/></svg>
+              <div class="skin-lock-badge"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="white" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>
+            </div>
+            <div class="skin-info">
+              <div class="skin-name">Golden</div>
+              <div class="skin-badge premium-badge-sm">Premium</div>
+            </div>
+          </div>
+          <div class="skin-card locked-skin" onclick="purchasePremium()">
+            <div class="skin-bg" style="background:linear-gradient(135deg,#1A1A3A,#2E2E5A)">
+              <svg viewBox="0 0 100 108" width="82" height="82"><ellipse cx="50" cy="90" rx="26" ry="16" fill="#0A0A20" opacity=".5"/><ellipse cx="50" cy="78" rx="22" ry="26" fill="#1E1E3A"/><ellipse cx="30" cy="40" rx="16" ry="14" fill="#161630"/><ellipse cx="70" cy="40" rx="16" ry="14" fill="#161630"/><ellipse cx="30" cy="40" rx="10" ry="9" fill="#4A4A80"/><ellipse cx="70" cy="40" rx="10" ry="9" fill="#4A4A80"/><circle cx="50" cy="58" r="24" fill="#28285A"/><ellipse cx="50" cy="70" rx="14" ry="11" fill="#4A4A80"/><ellipse cx="50" cy="64" rx="10" ry="8" fill="#0E0E28"/><circle cx="42" cy="54" r="5" fill="white"/><circle cx="58" cy="54" r="5" fill="white"/><circle cx="43" cy="55" r="3" fill="#1A0050"/><circle cx="59" cy="55" r="3" fill="#1A0050"/><circle cx="44" cy="54" r="1.5" fill="#A78BFA"/><circle cx="60" cy="54" r="1.5" fill="#A78BFA"/></svg>
+              <div class="skin-lock-badge"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="white" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>
+            </div>
+            <div class="skin-info">
+              <div class="skin-name">Midnight</div>
+              <div class="skin-badge premium-badge-sm">Premium</div>
+            </div>
+          </div>
+          <div class="skin-card locked-skin" onclick="purchasePremium()">
+            <div class="skin-bg" style="background:linear-gradient(135deg,#FDE8EE,#F9C0D0)">
+              <svg viewBox="0 0 100 108" width="82" height="82"><ellipse cx="50" cy="90" rx="26" ry="16" fill="#A04060" opacity=".3"/><ellipse cx="50" cy="78" rx="22" ry="26" fill="#D4748A"/><ellipse cx="30" cy="40" rx="16" ry="14" fill="#C05870"/><ellipse cx="70" cy="40" rx="16" ry="14" fill="#C05870"/><ellipse cx="30" cy="40" rx="10" ry="9" fill="#F8C8D8"/><ellipse cx="70" cy="40" rx="10" ry="9" fill="#F8C8D8"/><circle cx="50" cy="58" r="24" fill="#ECA0B4"/><ellipse cx="50" cy="70" rx="14" ry="11" fill="#FDE8F0"/><ellipse cx="50" cy="64" rx="10" ry="8" fill="#A04060"/><circle cx="42" cy="54" r="5" fill="white"/><circle cx="58" cy="54" r="5" fill="white"/><circle cx="43" cy="55" r="3" fill="#4A1020"/><circle cx="59" cy="55" r="3" fill="#4A1020"/><circle cx="44" cy="54" r="1" fill="white"/><circle cx="60" cy="54" r="1" fill="white"/></svg>
+              <div class="skin-lock-badge"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="white" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>
+            </div>
+            <div class="skin-info">
+              <div class="skin-name">Sakura</div>
+              <div class="skin-badge premium-badge-sm">Premium</div>
+            </div>
+          </div>
+        </div>
+
+        <button class="premium-subscribe-btn" onclick="purchasePremium()">Subscribe — $3.99 / month</button>
+        <button class="premium-restore-btn" onclick="restorePurchases()">Restore Purchase</button>
+        <div class="premium-legal-text">Subscription auto-renews monthly. Cancel anytime in Settings &gt; Apple ID &gt; Subscriptions.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===== BOTTOM NAV ===== -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" data-screen="screenHome" onclick="navigate('screenHome')" aria-label="Home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+      <span>Home</span>
+    </button>
+    <button class="nav-btn" data-screen="screenShop" onclick="navigate('screenShop')" aria-label="Shop">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+        <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <path d="M16 10a4 4 0 01-8 0"/>
+      </svg>
+      <span>Shop</span>
+      <div class="notif-dot" id="shopNotif"></div>
+    </button>
+    <button class="nav-btn" data-screen="screenProgress" onclick="navigate('screenProgress')" aria-label="Progress" id="progressNavBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+        <path d="M18 20V10M12 20V4M6 20v-6"/>
+      </svg>
+      <span>Progress</span>
+    </button>
+    <button class="nav-btn premium-nav-btn" data-screen="screenPremium" onclick="navigate('screenPremium')" aria-label="Premium">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+      </svg>
+      <span>Premium</span>
+    </button>
+  </nav>
+
+</div><!-- /app -->
+
+<!-- ===== KOALA NAME MODAL ===== -->
+<div id="nameModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center;" onclick="if(event.target===this)closeNameModal()">
+  <div style="background:#FFF8F0;border-radius:20px;padding:28px 24px 20px;width:80%;max-width:300px;box-shadow:0 8px 32px rgba(61,50,41,.2);font-family:'Nunito',sans-serif;">
+    <div style="font-size:18px;font-weight:800;color:#3D3229;margin-bottom:4px;text-align:center;">Name Your Koala</div>
+    <div style="font-size:13px;color:#8B7E74;text-align:center;margin-bottom:16px;">Tap the name anytime to change it</div>
+    <input id="nameModalInput" type="text" maxlength="20" placeholder="Enter a name..."
+      style="width:100%;padding:12px 14px;border-radius:12px;border:2px solid #E8DDD0;font-size:16px;font-family:'Nunito',sans-serif;font-weight:700;color:#3D3229;background:#fff;box-sizing:border-box;outline:none;"
+      onkeydown="if(event.key==='Enter')saveKoalaName()"/>
+    <div style="display:flex;gap:10px;margin-top:14px;">
+      <button onclick="closeNameModal()" style="flex:1;padding:12px;border-radius:12px;background:#F0E8DE;border:none;font-family:'Nunito',sans-serif;font-weight:700;font-size:15px;color:#8B7E74;cursor:pointer;">Cancel</button>
+      <button onclick="saveKoalaName()" style="flex:1;padding:12px;border-radius:12px;background:#7CB97A;border:none;font-family:'Nunito',sans-serif;font-weight:700;font-size:15px;color:#fff;cursor:pointer;">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SHEETS & OVERLAYS ===== -->
+
+<!-- Check-in sheet -->
+<div class="sheet-overlay" id="checkinOverlay" onclick="closeCheckin()"></div>
+<div class="bottom-sheet" id="checkinSheet" role="dialog" aria-label="Nightly Check-In">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title">Nightly Check-In</div>
+  <div class="field-group">
+    <label class="field-label" for="usedHours">Screen Time Used</label>
+    <div class="time-inputs">
+      <div class="time-input-wrap">
+        <input type="number" class="time-input" id="usedHours" placeholder="0" min="0" max="24" inputmode="numeric" oninput="validateCheckin()">
+        <span class="time-unit">hr</span>
+      </div>
+      <div class="time-input-wrap">
+        <input type="number" class="time-input" id="usedMinutes" placeholder="0" min="0" max="59" inputmode="numeric" oninput="validateCheckin()">
+        <span class="time-unit">min</span>
+      </div>
+    </div>
+  </div>
+  <div class="field-group">
+    <label class="field-label" for="diffSlider">How difficult was today?</label>
+    <div class="slider-value" id="diffVal">5</div>
+    <input type="range" class="slider-track" id="diffSlider" min="1" max="10" value="5"
+           oninput="document.getElementById('diffVal').textContent=this.value">
+    <div class="slider-labels"><span>Easy</span><span>Hard</span></div>
+  </div>
+  <div class="field-group">
+    <label class="field-label" for="reflectionText">Quick Reflection</label>
+    <textarea class="reflection-input" id="reflectionText" placeholder="How did today go? (at least 5 characters)" oninput="validateCheckin()"></textarea>
+    <div id="reflectionHint" style="font-size:11px;color:#E85D5D;margin-top:5px;font-weight:600;display:none"></div>
+  </div>
+  <button class="submit-btn" id="checkinSubmitBtn" onclick="submitCheckin()" disabled style="opacity:0.45;cursor:not-allowed;pointer-events:none">Complete Check-In</button>
+  <div id="checkinValidHint" style="font-size:11px;color:#aaa;text-align:center;margin-top:6px;padding-bottom:4px">Enter screen time &amp; write at least 5 characters to continue</div>
+</div>
+
+<!-- Goal sheet -->
+<div class="sheet-overlay" id="goalOverlay" onclick="closeGoalSheet()"></div>
+<div class="bottom-sheet" id="goalSheet" role="dialog" aria-label="Set Daily Goal">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title">Set Daily Goal</div>
+  <div class="field-group">
+    <label class="field-label">Maximum Screen Time</label>
+    <div class="time-inputs">
+      <div class="time-input-wrap">
+        <input type="number" class="time-input" id="goalHours" placeholder="2" min="0" max="24" inputmode="numeric">
+        <span class="time-unit">hr</span>
+      </div>
+      <div class="time-input-wrap">
+        <input type="number" class="time-input" id="goalMinutes" placeholder="30" min="0" max="59" inputmode="numeric">
+        <span class="time-unit">min</span>
+      </div>
+    </div>
+  </div>
+  <button class="save-goal-btn" onclick="saveGoal()">Save Goal</button>
+</div>
+
+<!-- Reward animation overlay -->
+<div class="reward-overlay" id="rewardOverlay">
+  <div class="big-coin" id="bigCoin">
+    <div class="coin-face coin-back"></div>
+    <div class="coin-face coin-front" id="coinFrontFace">+10</div>
+  </div>
+</div>
+
+<!-- Fail overlay -->
+<div class="fail-overlay" id="failOverlay" role="dialog">
+  <div class="fail-card">
+    <span class="fail-emoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" width="40" height="40" style="vertical-align:middle"><circle fill="#FFCC4D" cx="18" cy="18" r="16"/><path fill="none" stroke="#664500" stroke-width="2" stroke-linecap="round" d="M10 14q3-3 6 0"/><path fill="none" stroke="#664500" stroke-width="2" stroke-linecap="round" d="M20 14q3-3 6 0"/><path fill="none" stroke="#664500" stroke-width="2" stroke-linecap="round" d="M12 25q6-4 12 0"/></svg></span>
+    <div class="fail-title">Goal Not Reached</div>
+    <div class="fail-msg" id="failMsg">No coins were awarded because your screen time exceeded today's goal.</div>
+    <div class="fail-detail" id="failDetail">Tomorrow is a fresh start!</div>
+    <button class="fail-btn" onclick="closeFail()">Got It</button>
+  </div>
+</div>
+
+<!-- Full-Screen Adventure View -->
+<div id="advFullView" role="dialog" aria-label="Adventure">
+  <div class="adv-full-scene" id="advFullScene">
+    <div class="adv-full-sky">
+      <div class="adv-full-cloud" style="top:12%;height:18px;width:80px;animation-duration:18s;animation-delay:0s"></div>
+      <div class="adv-full-cloud" style="top:22%;height:12px;width:55px;animation-duration:24s;animation-delay:-8s"></div>
+      <div class="adv-full-cloud" style="top:8%;height:14px;width:65px;animation-duration:20s;animation-delay:-14s"></div>
+      <div class="adv-full-cloud" style="top:32%;height:9px;width:40px;animation-duration:28s;animation-delay:-5s"></div>
+    </div>
+    <svg class="adv-full-mountains" viewBox="0 0 400 80" preserveAspectRatio="none">
+      <polygon points="0,80 70,10 140,55 210,5 290,48 360,12 400,50 400,80" fill="#5B8FD0" opacity=".55"/>
+      <polygon points="0,80 50,30 110,62 175,18 250,58 320,22 380,52 400,80" fill="#7AB5E8" opacity=".38"/>
+    </svg>
+    <div class="adv-full-tree-layer" id="advFullTreeLayer"></div>
+    <div class="adv-full-ground"></div>
+    <div class="adv-full-grass" id="advFullGrass"></div>
+    <!-- Walking koala (full screen version) -->
+    <div class="adv-full-koala" id="advFullKoala">
+      <div class="adv-full-thought" id="advFullThought"></div>
+      <svg id="advFullKoalaSvg" viewBox="0 0 55 68" width="88" height="104" fill="none">
+        <!-- Shadow -->
+        <ellipse cx="27" cy="65" rx="18" ry="4.5" fill="rgba(0,0,0,0.25)"/>
+        <!-- Tail (back-left) -->
+        <ellipse cx="6" cy="42" rx="7.5" ry="5.5" fill="#868686" transform="rotate(-25 6 42)"/>
+        <!-- BODY side-profile -->
+        <ellipse cx="26" cy="44" rx="14" ry="16" fill="#ABABAB"/>
+        <ellipse cx="29" cy="47" rx="9" ry="11" fill="#DCD4CC"/>
+        <!-- Back arm — pivot (13,37) swings behind -->
+        <ellipse id="advFArmL" class="wk-armL" cx="13" cy="47" rx="4" ry="7" fill="#8A8A8A"/>
+        <!-- Back ear (left, partially visible) -->
+        <ellipse cx="20" cy="12" rx="6.5" ry="6.5" fill="#888888"/>
+        <ellipse cx="20" cy="12" rx="3.8" ry="3.8" fill="#C9A882"/>
+        <!-- HEAD facing right -->
+        <ellipse cx="29" cy="21" rx="15" ry="13" fill="#ABABAB"/>
+        <ellipse cx="33" cy="24" rx="9" ry="7.5" fill="#EAE2DA"/>
+        <!-- Front ear (right, big) -->
+        <ellipse cx="41" cy="9" rx="8" ry="8" fill="#9A9A9A"/>
+        <ellipse cx="41" cy="9" rx="5" ry="5" fill="#C9A882"/>
+        <!-- Eye (right, forward) -->
+        <ellipse id="advFEyeR" cx="38" cy="18" rx="3" ry="3.5" fill="#3D3229"/>
+        <circle cx="37" cy="17" r="1.3" fill="#fff" opacity=".9"/>
+        <!-- Eyebrow -->
+        <path d="M35 13 Q38 11.5 42 13" stroke="#7A7A7A" stroke-width="1.1" fill="none" opacity=".5" stroke-linecap="round"/>
+        <!-- Nose profile -->
+        <ellipse cx="44" cy="24" rx="4" ry="3" fill="#5C4A3A"/>
+        <!-- Mouth curve -->
+        <path id="advFMouth" d="M41 27 Q43 29.5 46 27" stroke="#5C4A3A" stroke-width="1" fill="none" stroke-linecap="round"/>
+        <!-- Front arm — pivot (37,37) -->
+        <ellipse id="advFArmR" class="wk-armR" cx="40" cy="47" rx="4" ry="7" fill="#9A9A9A"/>
+        <!-- Legs -->
+        <ellipse class="wk-legL" cx="20" cy="57" rx="4" ry="6.5" fill="#8A8A8A"/>
+        <ellipse class="wk-legR" cx="32" cy="57" rx="4" ry="6.5" fill="#9A9A9A"/>
+        <!-- Foot hints -->
+        <ellipse cx="20" cy="62" rx="5.5" ry="2.5" fill="#7A7A7A"/>
+        <ellipse cx="32" cy="62" rx="5.5" ry="2.5" fill="#8A8A8A"/>
+        <!-- Journal prop -->
+        <g id="advFJournal" opacity="0" style="transition:opacity .4s">
+          <rect x="33" y="30" width="16" height="12" rx="2" fill="#F5E6C8" stroke="#C4A86C" stroke-width="1"/>
+          <line x1="35" y1="35" x2="47" y2="35" stroke="#C4A86C" stroke-width=".8" opacity=".6"/>
+          <line x1="35" y1="38" x2="47" y2="38" stroke="#C4A86C" stroke-width=".8" opacity=".6"/>
+        </g>
+      </svg>
+    </div>
+    <div class="adv-full-header">
+      <button class="adv-full-back" onclick="closeAdvFullView()"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <div class="adv-full-info" id="advFullTimer">Adventure in progress</div>
+    </div>
+  </div>
+  <div class="adv-full-footer">
+    <div class="adv-full-status">
+      <div class="adv-full-status-title">Your koala is exploring!</div>
+      <div class="adv-full-status-sub" id="advFullSub">Come back in a while...</div>
+      <div class="adv-full-progress"><div class="adv-full-bar" id="advFullBar"></div></div>
+    </div>
+    <button class="adv-full-close-btn" onclick="closeAdvFullView()">← Back</button>
+  </div>
+</div>
+
+<!-- Adventure Hub overlay -->
+<div class="panic-full" id="panicFull" role="dialog" aria-label="Adventure Hub">
+  <button class="panic-close-btn" onclick="closePanic()" aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+  <div class="adv-hub-title">Adventure</div>
+
+  <div class="adv-hub-scroll">
+    <!-- Main adventure card -->
+    <div class="adv-main-card" onclick="startAdventure()" id="advMainCard">
+      <div class="adv-field">
+        <div class="adv-sky">
+          <!-- Clouds -->
+          <div class="adv-cloud" style="top:15%;height:16px;width:70px;animation-duration:16s;animation-delay:0s"></div>
+          <div class="adv-cloud" style="top:28%;height:10px;width:44px;animation-duration:22s;animation-delay:-8s"></div>
+          <div class="adv-cloud" style="top:10%;height:13px;width:55px;animation-duration:18s;animation-delay:-13s"></div>
+          <div class="adv-cloud" style="top:35%;height:8px;width:32px;animation-duration:25s;animation-delay:-4s"></div>
+        </div>
+        <!-- Mountains far layer -->
+        <svg class="adv-mountains" viewBox="0 0 400 70" preserveAspectRatio="none">
+          <polygon points="0,70 60,10 120,50 190,5 260,45 330,15 400,55 400,70" fill="#6B9FD4" opacity=".55"/>
+          <polygon points="0,70 40,30 100,60 160,20 230,55 310,25 370,50 400,70" fill="#7EB8E8" opacity=".4"/>
+        </svg>
+        <!-- Trees scrolling mid-layer -->
+        <div class="adv-tree-layer" id="advTreeLayer">
+          <!-- Trees are built by JS in _buildTrees() -->
+        </div>
+        <div class="adv-ground"></div>
+        <div class="adv-path"></div>
+        <!-- Scrolling grass blades -->
+        <div class="adv-grass-strip" id="advGrassStrip"></div>
+        <!-- Walking koala — position driven by JS -->
+        <div class="adv-walk-koala walking" id="advWalkKoala">
+          <div class="adv-koala-thought" id="advKoalaThought"></div>
+          <svg id="advKoalaSvg" viewBox="0 0 55 68" width="60" height="72" fill="none">
+            <!-- Shadow -->
+            <ellipse cx="27" cy="65" rx="16" ry="4" fill="rgba(0,0,0,0.22)"/>
+            <!-- Tail (back-left) -->
+            <ellipse cx="6" cy="42" rx="7.5" ry="5.5" fill="#868686" transform="rotate(-25 6 42)"/>
+            <!-- BODY side-profile -->
+            <ellipse cx="26" cy="44" rx="14" ry="16" fill="#ABABAB"/>
+            <ellipse cx="29" cy="47" rx="9" ry="11" fill="#DCD4CC"/>
+            <!-- Back arm — pivot (13,37) swings behind -->
+            <ellipse id="advArmL" class="wk-armL" cx="13" cy="47" rx="4" ry="7" fill="#8A8A8A"/>
+            <!-- Back ear (left, partially visible) -->
+            <ellipse cx="20" cy="12" rx="6.5" ry="6.5" fill="#888888"/>
+            <ellipse cx="20" cy="12" rx="3.8" ry="3.8" fill="#C9A882"/>
+            <!-- HEAD facing right -->
+            <ellipse cx="29" cy="21" rx="15" ry="13" fill="#ABABAB"/>
+            <ellipse cx="33" cy="24" rx="9" ry="7.5" fill="#EAE2DA"/>
+            <!-- Front ear (right, big) -->
+            <ellipse cx="41" cy="9" rx="8" ry="8" fill="#9A9A9A"/>
+            <ellipse cx="41" cy="9" rx="5" ry="5" fill="#C9A882"/>
+            <!-- Eye (right, forward-facing) -->
+            <ellipse id="advEyeR" cx="38" cy="18" rx="3" ry="3.5" fill="#3D3229"/>
+            <circle cx="37" cy="17" r="1.2" fill="#fff" opacity=".9"/>
+            <!-- Nose profile -->
+            <ellipse cx="44" cy="24" rx="4" ry="3" fill="#5C4A3A"/>
+            <!-- Mouth -->
+            <path id="advMouth" d="M41 27 Q43 29.5 46 27" stroke="#5C4A3A" stroke-width="1" fill="none" stroke-linecap="round"/>
+            <!-- Front arm — pivot (37,37) swings forward -->
+            <ellipse id="advArmR" class="wk-armR" cx="40" cy="47" rx="4" ry="7" fill="#9A9A9A"/>
+            <!-- Back leg — behind body -->
+            <ellipse class="wk-legL" cx="20" cy="57" rx="4" ry="6.5" fill="#8A8A8A"/>
+            <!-- Front leg — in front -->
+            <ellipse class="wk-legR" cx="32" cy="57" rx="4" ry="6.5" fill="#9A9A9A"/>
+            <!-- Foot hints -->
+            <ellipse cx="20" cy="62" rx="5.5" ry="2.5" fill="#7A7A7A" transform-origin="20 57"/>
+            <ellipse cx="32" cy="62" rx="5.5" ry="2.5" fill="#8A8A8A" transform-origin="32 57"/>
+            <!-- Journal prop (hidden by default) -->
+            <g id="advJournal" opacity="0" style="transition:opacity .4s">
+              <rect x="33" y="30" width="16" height="12" rx="2" fill="#F5E6C8" stroke="#C4A86C" stroke-width="1"/>
+              <line x1="35" y1="35" x2="47" y2="35" stroke="#C4A86C" stroke-width=".8" opacity=".6"/>
+              <line x1="35" y1="38" x2="47" y2="38" stroke="#C4A86C" stroke-width=".8" opacity=".6"/>
+            </g>
+          </svg>
+        </div>
+        <div class="adv-card-overlay">
+          <div class="adv-badge">Main Event</div>
+          <div class="adv-card-title" id="advMainTitle">Adventure Mode</div>
+          <div class="adv-card-sub" id="advMainSub">Your companion explores the world for 12 hours</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mini games -->
+    <div class="adv-section-label">Mini Games</div>
+    <div class="adv-mini-grid">
+      <div class="adv-mini-card">
+        <div class="adv-mini-top adv-mini-top-tt">
+          <div class="adv-mini-icon">
+            <svg viewBox="0 0 36 36" width="36" height="36" fill="none">
+              <circle cx="14" cy="14" r="12" fill="#EE4444"/>
+              <circle cx="14" cy="14" r="8" fill="#FF6666"/>
+              <circle cx="14" cy="14" r="4" fill="#EE4444"/>
+              <rect x="21" y="21" width="14" height="5" rx="2.5" fill="#8B5A2B" transform="rotate(45 21 21)"/>
+              <rect x="23" y="23" width="10" height="3" rx="1.5" fill="#6B3F1B" transform="rotate(45 23 23)"/>
+            </svg>
+          </div>
+          <div class="adv-mini-name">Table Tennis</div>
+          <div class="adv-mini-sub">+XP &amp; Coins</div>
+        </div>
+        <div class="adv-diff-row">
+          <button class="adv-diff-btn" onclick="startMiniGame('tt','easy')">Easy</button>
+          <button class="adv-diff-btn" onclick="startMiniGame('tt','medium')">Med</button>
+          <button class="adv-diff-btn" onclick="startMiniGame('tt','hard')">Hard</button>
+        </div>
+      </div>
+      <div class="adv-mini-card">
+        <div class="adv-mini-top adv-mini-top-bb">
+          <div class="adv-mini-icon">
+            <svg viewBox="0 0 36 36" width="36" height="36" fill="none">
+              <circle cx="18" cy="18" r="15" fill="#FF6B00"/>
+              <path d="M4 18 Q11 9 18 18 Q25 27 32 18" stroke="#CC4400" stroke-width="2" fill="none"/>
+              <path d="M4 18 Q11 27 18 18 Q25 9 32 18" stroke="#CC4400" stroke-width="2" fill="none"/>
+              <line x1="18" y1="3" x2="18" y2="33" stroke="#CC4400" stroke-width="2"/>
+            </svg>
+          </div>
+          <div class="adv-mini-name">Basketball</div>
+          <div class="adv-mini-sub">+XP &amp; Coins</div>
+        </div>
+        <div class="adv-diff-row">
+          <button class="adv-diff-btn" onclick="startMiniGame('bb','easy')">Easy</button>
+          <button class="adv-diff-btn" onclick="startMiniGame('bb','medium')">Med</button>
+          <button class="adv-diff-btn" onclick="startMiniGame('bb','hard')">Hard</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Basketball mini-game overlay -->
+<div class="mini-game-overlay" id="basketballGame" role="dialog">
+  <div class="mg-header">
+    <span class="mg-title">Basketball</span>
+    <span class="mg-score" id="bbScore">0 / 5</span>
+    <span class="mg-timer" id="bbTimer">0:30</span>
+  </div>
+  <button class="mg-close" onclick="closeMiniGame('bb')"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+  <div class="bb-arena" id="bbArena"
+       ontouchstart="bbSwipeStart(event)" onmousedown="bbSwipeStart(event)"
+       ontouchmove="bbSwipeMove(event)"   onmousemove="bbSwipeMove(event)"
+       ontouchend="bbSwipeEnd(event)"     onmouseup="bbSwipeEnd(event)">
+    <svg class="bb-court-svg" id="bbCourtSvg" viewBox="0 0 300 420" preserveAspectRatio="xMidYMid meet">
+      <!-- Court floor -->
+      <rect width="300" height="420" fill="#C8782A"/>
+      <rect x="15" y="15" width="270" height="390" rx="4" fill="none" stroke="#E09040" stroke-width="2"/>
+      <circle cx="150" cy="210" r="42" fill="none" stroke="#E09040" stroke-width="2"/>
+      <line x1="15" y1="210" x2="285" y2="210" stroke="#E09040" stroke-width="1.5"/>
+      <!-- Backboard + hoop -->
+      <rect x="108" y="28" width="84" height="12" rx="2" fill="#DDDDDD" stroke="#BBBBBB" stroke-width="1"/>
+      <rect x="146" y="40" width="8" height="26" fill="#AAAAAA"/>
+      <ellipse cx="150" cy="68" rx="24" ry="10" fill="none" stroke="#FF4400" stroke-width="3.5"/>
+      <!-- Net -->
+      <line x1="126" y1="68" x2="130" y2="96" stroke="#DDD" stroke-width="1.5" opacity=".7"/>
+      <line x1="136" y1="68" x2="138" y2="98" stroke="#DDD" stroke-width="1.5" opacity=".7"/>
+      <line x1="150" y1="68" x2="150" y2="98" stroke="#DDD" stroke-width="1.5" opacity=".7"/>
+      <line x1="164" y1="68" x2="162" y2="98" stroke="#DDD" stroke-width="1.5" opacity=".7"/>
+      <line x1="174" y1="68" x2="170" y2="96" stroke="#DDD" stroke-width="1.5" opacity=".7"/>
+      <line x1="130" y1="82" x2="170" y2="82" stroke="#DDD" stroke-width="1" opacity=".5"/>
+      <line x1="128" y1="90" x2="172" y2="90" stroke="#DDD" stroke-width="1" opacity=".5"/>
+      <!-- Swipe guide arc (hidden by default) -->
+      <path id="bbGuideArc" d="" stroke="rgba(255,255,255,0.35)" stroke-width="3" fill="none" stroke-dasharray="8 6" stroke-linecap="round" opacity="0"/>
+      <!-- Ball shadow -->
+      <ellipse id="bbBallShadow" cx="150" cy="405" rx="22" ry="6" fill="rgba(0,0,0,0.3)"/>
+      <!-- Ball -->
+      <circle id="bbBall" cx="150" cy="380" r="22" fill="#FF6B00" stroke="#CC4400" stroke-width="2.5"/>
+      <path id="bbBallStripe1" d="M130 378 Q150 370 170 378" stroke="#CC4400" stroke-width="1.8" fill="none"/>
+      <path id="bbBallStripe2" d="M129 387 Q150 397 171 387" stroke="#CC4400" stroke-width="1.8" fill="none"/>
+      <line id="bbBallLine" x1="150" y1="358" x2="150" y2="402" stroke="#CC4400" stroke-width="1.8"/>
+    </svg>
+    <div class="bb-feedback" id="bbFeedback"></div>
+    <div class="bb-swipe-hint" id="bbSwipeHint">Swipe the ball up to shoot!</div>
+  </div>
+</div>
+
+<!-- Table Tennis mini-game overlay -->
+<div class="mini-game-overlay" id="tableTennisGame" role="dialog">
+  <div class="mg-header">
+    <span class="mg-title">Table Tennis</span>
+    <span class="mg-score" id="ttScore">You 0 — 0 Bot</span>
+    <span class="mg-timer" id="ttTimer">0:30</span>
+  </div>
+  <button class="mg-close" onclick="closeMiniGame('tt')"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+  <div class="tt-arena">
+    <canvas id="ttCanvas" width="300" height="440"></canvas>
+    <div class="tt-start" id="ttStart">Tap to Start!</div>
+  </div>
+</div>
+
+<!-- Focus Mode overlay -->
+<div class="focus-mode-overlay" id="focusModeOverlay" role="dialog" aria-label="Focus Mode">
+  <!-- Ambient glow layers -->
+  <div class="focus-bg-radial"></div>
+  <div class="focus-orb focus-orb-1"></div>
+  <div class="focus-orb focus-orb-2"></div>
+
+  <!-- Close -->
+  <button class="focus-close-btn" onclick="closeFocusMode()" aria-label="Close focus mode"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+
+  <!-- Main centered content column -->
+  <div class="focus-content">
+
+    <!-- 1. Koala -->
+    <div class="focus-koala-wrap idle" id="focusKoala">
+      <div class="focus-koala-aura" id="focusKoalaAura"></div>
+      <svg viewBox="0 0 100 110" fill="none" width="96" height="106" aria-hidden="true">
+        <!-- Tail -->
+        <ellipse cx="76" cy="88" rx="7" ry="5" fill="#969696" transform="rotate(15 76 88)"/>
+        <!-- Ears -->
+        <ellipse cx="17" cy="21" rx="15" ry="15" fill="#8E8E8E"/>
+        <ellipse cx="17" cy="21" rx="9" ry="9" fill="#C9A882"/>
+        <ellipse cx="83" cy="21" rx="15" ry="15" fill="#8E8E8E"/>
+        <ellipse cx="83" cy="21" rx="9" ry="9" fill="#C9A882"/>
+        <!-- Head -->
+        <ellipse cx="50" cy="38" rx="28" ry="25" fill="#A0A0A0"/>
+        <ellipse cx="50" cy="38" rx="26" ry="23" fill="#A4A4A4" opacity=".3"/>
+        <ellipse cx="50" cy="43" rx="18" ry="14" fill="#EAE2DA"/>
+        <!-- Eyes -->
+        <ellipse cx="40" cy="37" rx="3.8" ry="4.5" fill="#3D3229"/>
+        <circle cx="38.5" cy="35.5" r="1.4" fill="#fff" opacity=".9"/>
+        <circle cx="41" cy="38" r=".6" fill="#fff" opacity=".4"/>
+        <ellipse cx="60" cy="37" rx="3.8" ry="4.5" fill="#3D3229"/>
+        <circle cx="58.5" cy="35.5" r="1.4" fill="#fff" opacity=".9"/>
+        <circle cx="61" cy="38" r=".6" fill="#fff" opacity=".4"/>
+        <!-- Nose & mouth -->
+        <ellipse cx="50" cy="46" rx="5.5" ry="3.8" fill="#5C4A3A"/>
+        <ellipse cx="50" cy="45.5" rx="3" ry="1.8" fill="#6B5A4A" opacity=".3"/>
+        <line x1="50" y1="47.5" x2="50" y2="49" stroke="#5C4A3A" stroke-width=".8" stroke-linecap="round"/>
+        <path d="M45 50 Q50 53.5 55 50" stroke="#5C4A3A" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+        <!-- Blush -->
+        <ellipse cx="34" cy="46" rx="5" ry="2.5" fill="#F0B8B8" opacity=".35"/>
+        <ellipse cx="66" cy="46" rx="5" ry="2.5" fill="#F0B8B8" opacity=".35"/>
+        <!-- Body -->
+        <ellipse cx="50" cy="76" rx="24" ry="22" fill="#A0A0A0"/>
+        <ellipse cx="50" cy="76" rx="22" ry="20" fill="#A4A4A4" opacity=".2"/>
+        <ellipse cx="50" cy="79" rx="16" ry="15" fill="#DCD4CC"/>
+        <ellipse cx="48" cy="76" rx="8" ry="10" fill="#E4DCD4" opacity=".3"/>
+        <!-- Arms -->
+        <ellipse id="fArmL" cx="26" cy="72" rx="8" ry="11" fill="#8E8E8E" transform="rotate(-10 26 72)"/>
+        <ellipse id="fArmR" cx="74" cy="72" rx="8" ry="11" fill="#8E8E8E" transform="rotate(10 74 72)"/>
+        <!-- Paw details -->
+        <ellipse cx="22" cy="80" rx="4" ry="3" fill="#7E7E7E" transform="rotate(-10 22 80)"/>
+        <ellipse cx="78" cy="80" rx="4" ry="3" fill="#7E7E7E" transform="rotate(10 78 80)"/>
+        <!-- Legs -->
+        <ellipse cx="38" cy="96" rx="10" ry="6.5" fill="#8E8E8E"/>
+        <ellipse cx="62" cy="96" rx="10" ry="6.5" fill="#8E8E8E"/>
+        <!-- Toe beans -->
+        <circle cx="34" cy="98" r="1.5" fill="#C9A882" opacity=".5"/>
+        <circle cx="38" cy="99" r="1.5" fill="#C9A882" opacity=".5"/>
+        <circle cx="42" cy="98" r="1.5" fill="#C9A882" opacity=".5"/>
+        <circle cx="58" cy="98" r="1.5" fill="#C9A882" opacity=".5"/>
+        <circle cx="62" cy="99" r="1.5" fill="#C9A882" opacity=".5"/>
+        <circle cx="66" cy="98" r="1.5" fill="#C9A882" opacity=".5"/>
+        <!-- Book (shown during working state) -->
+        <g id="focusBook">
+          <rect x="30" y="82" width="26" height="16" rx="2" fill="#7BA8D4" opacity=".85"/>
+          <line x1="43" y1="82" x2="43" y2="98" stroke="#5A88B4" stroke-width="1.2"/>
+          <line x1="32" y1="87" x2="41" y2="87" stroke="#5A88B4" stroke-width=".8" opacity=".5"/>
+          <line x1="32" y1="91" x2="41" y2="91" stroke="#5A88B4" stroke-width=".8" opacity=".5"/>
+          <line x1="45" y1="87" x2="54" y2="87" stroke="#5A88B4" stroke-width=".8" opacity=".5"/>
+          <line x1="45" y1="91" x2="54" y2="91" stroke="#5A88B4" stroke-width=".8" opacity=".5"/>
+        </g>
+      </svg>
+    </div>
+
+    <!-- 2. Ring + Timer -->
+    <div class="focus-ring-wrap">
+      <svg class="focus-ring-svg" id="focusRingSvg" width="200" height="200" viewBox="0 0 200 200">
+        <!-- Track ring -->
+        <circle cx="100" cy="100" r="84" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="7"/>
+        <!-- Progress ring -->
+        <circle id="focusProgressRing" cx="100" cy="100" r="84" fill="none" stroke="rgba(255,255,255,0.75)" stroke-width="7" stroke-linecap="round" transform="rotate(-90 100 100)"/>
+      </svg>
+      <div class="focus-timer-center">
+        <div class="focus-timer-display" id="focusTimerDisplay">25:00</div>
+        <div class="focus-timer-label">minutes</div>
+      </div>
+    </div>
+
+    <!-- 3. Session stats -->
+    <div class="focus-stats">
+      <span id="focusTotalSessions">0</span> total &bull; <span id="focusTodaySessions">0</span> today
+    </div>
+
+    <!-- 4. Result banner -->
+    <div class="focus-result" id="focusResult"></div>
+
+    <!-- 4b. Time picker dial -->
+    <div class="focus-time-picker" id="focusTimePicker">
+      <div class="focus-dial-display">
+        <span class="focus-dial-mins" id="focusDialMins">25</span>
+        <span class="focus-dial-unit">min</span>
+        <span class="focus-dial-xp" id="focusDialXP">+25 XP</span>
+      </div>
+      <input class="focus-dial" id="focusDial" type="range" min="10" max="60" value="25"
+        oninput="selectFocusDuration(parseInt(this.value))"/>
+      <div class="focus-dial-ticks">
+        <span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>60</span>
+      </div>
+      <div class="focus-dial-hint" id="focusDialHint">Do 10 more minutes for +20 XP</div>
+    </div>
+
+    <!-- 5. Action buttons -->
+    <div class="focus-actions">
+      <button class="focus-start-btn glass-btn" id="focusStartBtn" onclick="startFocusSession()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Start Focus
+      </button>
+      <div class="focus-running-btns" id="focusRunningBtns" style="display:none">
+        <button class="focus-pause-btn glass-btn" id="focusPauseBtn" onclick="pauseFocusSession()">
+          <span id="focusPauseIcon"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg></span> <span id="focusPauseLabel">Pause</span>
+        </button>
+        <button class="focus-stop-btn glass-btn-ghost" id="focusStopBtn" onclick="stopFocusSession()">End Early</button>
+      </div>
+    </div>
+
+    <!-- 6. Caption -->
+    <div class="focus-caption" id="focusCaption">25 minutes of deep focus</div>
+
+  </div>
+</div>
+
+<!-- Focus timer overlay (shown during active focus breaks) -->
+<div class="focus-timer-overlay" id="focusTimerOverlay">
+  <div>
+    <div class="focus-timer-label" id="focusTimerLabel">Focus break</div>
+    <div class="focus-timer-val" id="focusTimerVal">5:00</div>
+  </div>
+  <div class="focus-timer-close" onclick="document.getElementById('focusTimerOverlay').classList.remove('show')" aria-label="Dismiss timer">&#x2715;</div>
+</div>
+
+<!-- Urge interrupt overlay -->
+<div class="urge-overlay" id="urgeOverlay" role="dialog" aria-label="Urge interrupt">
+  <div class="urge-card">
+    <div class="urge-koala"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" width="48" height="48" style="vertical-align:middle"><circle fill="#AAB8C2" cx="8" cy="12" r="8"/><circle fill="#E1E8ED" cx="8" cy="12" r="5"/><circle fill="#AAB8C2" cx="28" cy="12" r="8"/><circle fill="#E1E8ED" cx="28" cy="12" r="5"/><circle fill="#AAB8C2" cx="18" cy="20" r="12"/><circle fill="#E1E8ED" cx="18" cy="22" r="8"/><ellipse fill="#292F33" cx="18" cy="21" rx="4" ry="3"/><circle fill="#292F33" cx="13" cy="16" r="2"/><circle fill="#292F33" cx="23" cy="16" r="2"/><circle fill="#FFFFFF" cx="14" cy="15.5" r="0.8"/><circle fill="#FFFFFF" cx="24" cy="15.5" r="0.8"/></svg></div>
+    <div class="urge-title">Hold on a moment...</div>
+    <div class="urge-question">Your koala is checking in — do you really need to open this?</div>
+    <div class="urge-breathe">Take a breath. This feeling will pass. <svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:middle;display:inline-block" fill="none"><path d="M17 8C8 10 5.9 16.17 3.82 19.5c1.68-1.17 3.82-1.5 5.18-1.5 4 0 4 2 8 2s4-2 8-2V8z" fill="#4CAF50"/><path d="M3.82 19.5C2.96 20.92 2 23 2 23c0-1 .17-3.14 1.82-3.5z" fill="#388E3C"/></svg></div>
+    <div class="urge-countdown" id="urgeCountdown"></div>
+    <div class="urge-btns">
+      <button class="urge-confirm-btn" id="urgeConfirmBtn" style="display:none" onclick="closeUrgeInterrupt()">Continue anyway</button>
+      <button class="urge-dismiss-btn" onclick="closeUrgeInterrupt()">I'll wait &#x2713;</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== FEED KOALA OVERLAY ===== -->
+<div class="feed-overlay" id="feedOverlay" style="display:none" role="dialog" aria-label="Feed Koala">
+  <div class="feed-overlay-handle"></div>
+  <div class="feed-overlay-top">
+    <div class="feed-overlay-title" id="feedOverlayTitle">
+      <svg id="feedOverlayIcon" viewBox="0 0 44 48" width="22" height="22" fill="none" style="flex-shrink:0"><ellipse cx="22" cy="28" rx="15" ry="19" fill="#4CAF50" transform="rotate(-15 22 28)"/><path d="M22 46 Q18 34 13 20" stroke="#2E7D32" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg>
+      <span id="feedOverlayTitleText">Feed Your Koala</span>
+    </div>
+    <button class="feed-close-x" onclick="closeFeedOverlay()" aria-label="Close">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="feed-overlay-sub" id="feedOverlaySub">Drag a leaf up to your koala to feed them!</div>
+  <div class="feed-energy-row">
+    <span class="feed-energy-label">Energy</span>
+    <div class="feed-energy-track">
+      <div class="feed-energy-fill" id="feedEnergyFill" style="width:50%"></div>
+    </div>
+    <span class="feed-energy-pct" id="feedEnergyPct">50%</span>
+  </div>
+  <div class="feed-leaves-row" id="feedLeavesRow"></div>
+  <div class="feed-stock-row">
+    Stock: <strong id="feedLeafStock">0 / 15</strong> &nbsp;·&nbsp; 3–4 leaves fills him up
+  </div>
+</div>
+
+<!-- ===== SETTINGS PANEL ===== -->
+<div class="sheet-overlay" id="settingsOverlay" onclick="closeSettings()"></div>
+<div class="bottom-sheet" id="settingsSheet" role="dialog" aria-label="Settings">
+  <div class="sheet-handle"></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+    <div class="sheet-title" style="margin:0">Settings</div>
+    <button onclick="closeSettings()" style="background:var(--bg);width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text-soft);border:none;flex-shrink:0">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+
+  <div class="settings-section-title">Preferences</div>
+  <div class="settings-row">
+    <div class="settings-row-left">
+      <div class="settings-row-icon" style="background:#221A3A">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A78BFA" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+      </div>
+      <div>
+        <div class="settings-row-title">Dark Mode</div>
+        <div class="settings-row-sub">Easier on the eyes at night</div>
+      </div>
+    </div>
+    <label class="toggle-switch">
+      <input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode(this.checked)">
+      <span class="toggle-slider"></span>
+    </label>
+  </div>
+
+  <!-- Premium Subscription Button -->
+  <button id="premiumBtn" class="premium-subscribe-btn" onclick="closeSettings();purchasePremium()">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="color:#D4AF37"><path d="M12 2L15.09 8.26H22L17.27 12.38L19.36 18.64L12 14.52L4.64 18.64L6.73 12.38L2 8.26H8.91L12 2Z"/></svg>
+    Subscribe Premium — $3.99/mo
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-left:auto"><polyline points="9 18 15 12 9 6"/></svg>
+  </button>
+
+  <button class="open-help-btn" onclick="closeSettings();openHelp()">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r="1" fill="currentColor"/></svg>
+    Help
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-left:auto"><polyline points="9 18 15 12 9 6"/></svg>
+  </button>
+</div>
+
+<!-- ===== HELP OVERLAY (full screen) ===== -->
+<div class="help-overlay" id="helpOverlay" role="dialog" aria-label="How to Play">
+  <div class="help-overlay-header">
+    <button class="help-overlay-back" onclick="closeHelp()" aria-label="Back">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div class="help-overlay-title">Help</div>
+    <div style="width:36px"></div>
+  </div>
+  <div class="help-overlay-scroll">
+
+    <div class="help-item">
+      <div class="help-item-title">
+        <div class="help-item-icon" style="background:#E8F5E4"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5A9A58" stroke-width="2.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>
+        Daily Check-In
+      </div>
+      <div class="help-item-body">Tap Check In each day to log your screen time. You'll rate how your day went and optionally write a quick reflection. Your koala rewards you with coins and XP for checking in honestly. Miss a day and your koala's health starts to drop — consistency is everything.</div>
+    </div>
+
+    <div class="help-item">
+      <div class="help-item-title">
+        <div class="help-item-icon" style="background:#FFF3D6"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B8891E" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="#B8891E"/></svg></div>
+        Today's Goal
+      </div>
+      <div class="help-item-body">Set your daily screen time limit using the Edit Goal button. When you check in, the app measures whether you stayed under it. Win the day and your koala gets healthier and happier. Go over and health takes a hit — but every new morning is a fresh start with no penalty carried forward forever.</div>
+    </div>
+
+    <div class="help-item">
+      <div class="help-item-title">
+        <div class="help-item-icon" style="background:#E0EDFF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5590B8" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+        Focus Mode
+      </div>
+      <div class="help-item-body">Commit to a distraction-free session lasting 10 to 60 minutes. Use the dial to pick your duration — every minute earns 1 XP, and a full 60 minutes gives you a bonus 100 XP total. For sessions under 60 minutes, tap the "+10 min for +20 XP bonus" hint to extend your session. Those extra 10 minutes are worth double the XP of a normal 10-minute block, so it always pays to push a little further.</div>
+    </div>
+
+    <div class="help-item">
+      <div class="help-item-title">
+        <div class="help-item-icon" style="background:#E0F0FA"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3D8FBF" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><circle cx="9" cy="10" r="1" fill="#3D8FBF"/><circle cx="15" cy="10" r="1" fill="#3D8FBF"/></svg></div>
+        Panic Mode
+      </div>
+      <div class="help-item-body">Feeling the urge to scroll? Tap Panic Mode to open a calming breathing exercise. Follow the pulsing ring — inhale as it expands, exhale as it contracts, in a slow 4-second rhythm. Use it any time you feel pulled toward your phone. Your koala stays with you the whole time. Tap the X when you feel ready to continue.</div>
+    </div>
+
+    <div class="help-item">
+      <div class="help-item-title">
+        <div class="help-item-icon" style="background:#FFF3D6"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B8891E" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><text x="8.5" y="16.5" font-size="10" font-weight="900" fill="#B8891E" stroke="none">$</text></svg></div>
+        Coins
+      </div>
+      <div class="help-item-body">Coins are the in-app currency. Earn them by completing daily check-ins, levelling up, and finishing focus sessions. Spend coins in the Shop to decorate your koala's room with rugs, curtains, lamps, plants, a fireplace, and more. The cozier the room, the happier the koala. Coins do not expire, so save up for the items you really want.</div>
+    </div>
+
+    <div class="help-item">
+      <div class="help-item-title">
+        <div class="help-item-icon" style="background:#EDE8FF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+        XP &amp; Levels
+      </div>
+      <div class="help-item-body">XP (Experience Points) is earned through check-ins, maintaining streaks, and completing focus sessions. Your total XP is shown in the top bar as a star icon. As XP accumulates your level increases — each level costs progressively more XP to reach. Levelling up rewards you with bonus coins and eventually unlocks new room themes. Your level is a permanent reflection of how consistent you've been.</div>
+    </div>
+
+    <div class="help-item">
+      <div class="help-item-title">
+        <div class="help-item-icon" style="background:#E8F5E4"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5A9A58" stroke-width="2.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></div>
+        Health &amp; Energy
+      </div>
+      <div class="help-item-body">Health represents your koala's overall wellbeing. It drops when you miss check-ins or exceed your screen time goal, and recovers when you win days. If health falls too low your koala shows band-aids and moves more slowly. Energy reflects how active and rested your koala feels — it rises with focus sessions and check-ins, and drains during long inactivity. Keep both bars high by building a daily rhythm.</div>
+    </div>
+
+    <div class="help-item">
+      <div class="help-item-title">
+        <div class="help-item-icon" style="background:#FFF0F5"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C06080" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M8 13s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></div>
+        Mood
+      </div>
+      <div class="help-item-body">Your koala's mood is shown below the health and energy bars. It shifts throughout the day based on your habits, energy level, recent interactions, and whether you've been winning or losing days. A happy koala bounces and plays; a bored koala might wander or yawn; a sad koala slows down. Keep interacting, checking in, and doing focus sessions to keep the mood positive.</div>
+    </div>
+
+    <div class="help-item">
+      <div class="help-item-title">
+        <div class="help-item-icon" style="background:#FFF3D6"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D4890A" stroke-width="2.5"><path d="M12 2c0 0-6 7-6 13a6 6 0 0012 0C18 9 12 2 12 2z"/></svg></div>
+        Streaks
+      </div>
+      <div class="help-item-body">A streak is the number of consecutive days you've met your screen time goal. Reaching streak milestones at 3, 7, 14, and 30 days earns big XP bonuses. A long streak also makes your koala progressively more animated and cheerful. Miss a single day and your streak resets to zero — but streaks can always be rebuilt. Think of every morning as a new opportunity.</div>
+    </div>
+
+    <div class="help-item">
+      <div class="help-item-title">
+        <div class="help-item-icon" style="background:#F0EDE4"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A7050" stroke-width="2.5"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0112 0v2"/></svg></div>
+        Your Koala &amp; Bond
+      </div>
+      <div class="help-item-body">Your koala reacts to everything — tap it to get a wiggle, wave, or surprised look. Over time your Bond score grows, unlocking more expressive behaviors and animations. You can rename your koala any time by tapping the name at the top of the screen. The koala's appearance and behavior reflect the time of day, the weather, your current mood, and how the day's going — it's always in sync with your journey.</div>
+    </div>
+
+    <div class="help-item">
+      <div class="help-item-title">
+        <div class="help-item-icon" style="background:#F0EDE4"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A7050" stroke-width="2.5"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg></div>
+        Shop &amp; Koala's Room
+      </div>
+      <div class="help-item-body">Visit the Shop tab to spend coins on items for your koala's room. Rugs, curtains, lamps, plants, bookshelves, a fireplace, and more are available — each one changes how the room looks and feels. Some items are locked until you reach a higher level. Focus Rewards are a special category of upgrades tied directly to completing focus milestones. The more you invest in the room, the cozier and more alive it becomes.</div>
+    </div>
+
+    <div class="help-item">
+      <div class="help-item-title">
+        <div class="help-item-icon" style="background:#E8F5E9"><svg viewBox="0 0 44 48" width="16" height="16" fill="none"><ellipse cx="22" cy="28" rx="15" ry="19" fill="#4CAF50" transform="rotate(-15 22 28)"/><path d="M22 46 Q18 34 13 20" stroke="#2E7D32" stroke-width="2" fill="none" stroke-linecap="round"/></svg></div>
+        Eucalyptus Leaves
+      </div>
+      <div class="help-item-body">Eucalyptus Leaves are a special currency that fuels your koala directly. You can buy them in the Shop for just 2 coins each, and you can hold up to 15 leaf sets at a time — once you're maxed out, you'll need to use some before you can buy more. Your koala needs to be fed at least twice a day to stay happy and energetic. Keep an eye on your leaf stock and stock up regularly!</div>
+    </div>
+
+    <div class="help-item">
+      <div class="help-item-title">
+        <div class="help-item-icon" style="background:#E8F5E9"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+        Feeding Your Koala
+      </div>
+      <div class="help-item-body">When your koala's Energy drops below 100%, a green "Feed Koala" button appears between the stat bars and Today's Goal. Tap it to open the feeding panel — then drag a leaf upward toward your koala. Once the leaf reaches the koala zone (top half of the screen), it flies in and restores about 28 energy. It takes 3–4 leaves to fill your koala from empty to full. When fully fed, your koala celebrates and becomes super happy! Each feeding also builds your Bond slightly. Your koala will start saying things like "I'm hungry!" and "Feed me!" when energy runs low, so listen for those cues.</div>
+    </div>
+
+    <div class="help-item">
+      <div class="help-item-title">
+        <div class="help-item-icon" style="background:#FFF3E0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E65100" stroke-width="2"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg></div>
+        Hunger Notifications
+      </div>
+      <div class="help-item-body">Your koala gets hungry twice a day — in the morning (around 8–10am) and in the afternoon (around 2–4pm). If your koala's Energy is below 50% at those times, you'll receive a push notification reminding you to feed them. If your leaf stock is empty, the notification will also remind you to buy more from the Shop. Make sure notifications are enabled so you never miss a hungry koala moment!</div>
+    </div>
+
+    <div class="help-item">
+      <div class="help-item-title">
+        <div class="help-item-icon" style="background:#FFF9C4"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="color:#D4AF37"><path d="M12 2L15.09 8.26H22L17.27 12.38L19.36 18.64L12 14.52L4.64 18.64L6.73 12.38L2 8.26H8.91L12 2Z"/></svg></div>
+        Premium Features
+      </div>
+      <div class="help-item-body">Subscribe to Premium for $3.99/month to unlock exclusive features! Switch between 4 exclusive koala skins: Classic, Golden, Midnight, and Sakura. Earn 1.5x coins and XP on every check-in and focus session. Unlock premium-only room items like the Gold Koala Bed and Crystal Lamp. And as a premium member, your streak pauses instead of breaking when you miss a day — your progress is protected. Cancel anytime through App Store Settings.</div>
+    </div>
+
+    <div class="help-item">
+      <div class="help-item-title">
+        <div class="help-item-icon" style="background:#E8F4FF"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#3A7BD5" stroke-width="2.5"><path d="M17 8C8 10 5.9 16.17 3.82 19.5c1.68-1.17 3.82-1.5 5.18-1.5 4 0 4 2 8 2s4-2 8-2V8z" fill="#3A7BD5" opacity=".4"/></svg></div>
+        Adventure Mode
+      </div>
+      <div class="help-item-body">Send your koala on a 12-hour outdoor adventure! Tap the Adventure card in the Adventure hub to begin. While away, your koala walks through a scenic landscape, journals on rocks, does yoga, and explores. Tap the adventure banner or card to open the full-screen view and watch your koala in real time. When the adventure ends, your koala returns home with coins and XP based on how long it explored. You can only run one adventure at a time.</div>
+    </div>
+
+    <div class="help-item">
+      <div class="help-item-title">
+        <div class="help-item-icon" style="background:#FFF3E0"><svg viewBox="0 0 36 36" width="16" height="16" fill="none"><circle cx="14" cy="14" r="12" fill="#EE4444" opacity=".7"/><rect x="21" y="21" width="14" height="5" rx="2.5" fill="#8B5A2B" transform="rotate(45 21 21)"/></svg></div>
+        Mini Games
+      </div>
+      <div class="help-item-body">Two mini-games are available in the Adventure hub: Table Tennis and Basketball. Choose Easy, Medium, or Hard before each game — harder difficulties offer bigger coin and XP rewards. In Table Tennis, drag your finger left and right to move your paddle and keep the ball in play against the Bot. In Basketball, swipe upward on the ball to shoot it toward the hoop — the power and angle depend on how far and in which direction you swipe. Each game lasts 30 seconds. Tap the X button in the top-right corner to exit at any time.</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== PREMIUM ONBOARDING MODAL ===== -->
+<div id="premiumOnboardingModal" style="display:none;position:fixed;inset:0;z-index:99990;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.6)">
+  <div style="background:#fff;border-radius:28px 28px 0 0;width:100%;max-width:430px;max-height:92vh;overflow-y:auto;padding:0 0 24px 0;box-shadow:0 -8px 40px rgba(0,0,0,.25)">
+    <!-- Drag handle -->
+    <div style="width:40px;height:4px;background:#E0D8D0;border-radius:2px;margin:12px auto 0"></div>
+    <!-- Hero -->
+    <div style="background:linear-gradient(135deg,#1A0A2E,#3B1F72 50%,#0F2856);padding:28px 24px 24px;text-align:center;border-radius:24px 24px 0 0">
+      <div style="margin-bottom:8px">
+        <svg viewBox="0 0 24 24" width="40" height="40" fill="#FFB800" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      </div>
+      <div style="font-size:24px;font-weight:900;color:#fff;margin-bottom:6px;font-family:'Quicksand',sans-serif">Unlock Premium</div>
+      <div style="font-size:14px;color:rgba(255,255,255,.75);margin-bottom:0">Everything you need. Nothing you don't.</div>
+    </div>
+    <!-- Animals showcase -->
+    <div style="padding:20px 20px 0">
+      <div style="font-size:13px;font-weight:800;color:#9B6FDB;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;text-align:center">Choose Your Companion</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:18px">
+        <div style="text-align:center;background:#F5F0FA;border-radius:14px;padding:10px 4px">
+          <svg viewBox="0 0 60 60" width="44" height="44"><ellipse cx="30" cy="22" rx="17" ry="15" fill="#A0A0A0"/><ellipse cx="18" cy="13" rx="9" ry="9" fill="#8E8E8E"/><ellipse cx="42" cy="13" rx="9" ry="9" fill="#8E8E8E"/><ellipse cx="18" cy="13" rx="6" ry="6" fill="#C9A882"/><ellipse cx="42" cy="13" rx="6" ry="6" fill="#C9A882"/><ellipse cx="30" cy="26" rx="11" ry="8" fill="#EAE2DA"/><circle cx="24" cy="21" r="2.5" fill="#3D3229"/><circle cx="36" cy="21" r="2.5" fill="#3D3229"/><ellipse cx="30" cy="44" rx="14" ry="13" fill="#A0A0A0"/></svg>
+          <div style="font-size:11px;font-weight:800;color:#3D3229;margin-top:4px">Koala</div>
+        </div>
+        <div style="text-align:center;background:#FFF5E8;border-radius:14px;padding:10px 4px">
+          <svg viewBox="0 0 60 60" width="44" height="44"><ellipse cx="30" cy="22" rx="17" ry="15" fill="#7B5B3A"/><ellipse cx="18" cy="12" rx="8" ry="8" fill="#6B4B2A"/><ellipse cx="42" cy="12" rx="8" ry="8" fill="#6B4B2A"/><ellipse cx="18" cy="12" rx="5" ry="5" fill="#C9A882"/><ellipse cx="42" cy="12" rx="5" ry="5" fill="#C9A882"/><ellipse cx="30" cy="27" rx="12" ry="8" fill="#D4B896"/><circle cx="24" cy="21" r="2.5" fill="#1A0800"/><circle cx="36" cy="21" r="2.5" fill="#1A0800"/><ellipse cx="30" cy="44" rx="14" ry="13" fill="#7B5B3A"/></svg>
+          <div style="font-size:11px;font-weight:800;color:#3D3229;margin-top:4px">Bear</div>
+        </div>
+        <div style="text-align:center;background:#FFF0F5;border-radius:14px;padding:10px 4px">
+          <svg viewBox="0 0 60 60" width="44" height="44"><ellipse cx="22" cy="8" rx="5" ry="14" fill="#D0D0D0"/><ellipse cx="38" cy="8" rx="5" ry="14" fill="#D0D0D0"/><ellipse cx="22" cy="8" rx="2.5" ry="11" fill="#F8B8C8"/><ellipse cx="38" cy="8" rx="2.5" ry="11" fill="#F8B8C8"/><ellipse cx="30" cy="26" rx="16" ry="14" fill="#E0E0E0"/><ellipse cx="30" cy="30" rx="11" ry="8" fill="#F8F8F8"/><circle cx="24" cy="22" r="2.5" fill="#4A1A4A"/><circle cx="36" cy="22" r="2.5" fill="#4A1A4A"/><ellipse cx="30" cy="44" rx="14" ry="13" fill="#E0E0E0"/></svg>
+          <div style="font-size:11px;font-weight:800;color:#3D3229;margin-top:4px">Bunny</div>
+        </div>
+        <div style="text-align:center;background:#FFF8EC;border-radius:14px;padding:10px 4px">
+          <svg viewBox="0 0 60 60" width="44" height="44"><ellipse cx="14" cy="18" rx="7" ry="10" fill="#B8904A" transform="rotate(-20 14 18)"/><ellipse cx="46" cy="18" rx="7" ry="10" fill="#B8904A" transform="rotate(20 46 18)"/><ellipse cx="30" cy="24" rx="17" ry="14" fill="#C8A06A"/><ellipse cx="30" cy="29" rx="12" ry="8" fill="#F0E0C0"/><circle cx="24" cy="21" r="2.5" fill="#2A1800"/><circle cx="36" cy="21" r="2.5" fill="#2A1800"/><ellipse cx="30" cy="44" rx="14" ry="13" fill="#C8A06A"/></svg>
+          <div style="font-size:11px;font-weight:800;color:#3D3229;margin-top:4px">Dog</div>
+        </div>
+      </div>
+      <!-- Feature rows -->
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:12px;background:#F7F0FF;border-radius:14px;padding:12px 14px">
+          <div style="width:34px;height:34px;border-radius:10px;background:#9B6FDB;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div>
+            <div style="font-size:14px;font-weight:800;color:#3D3229">Streak Protection</div>
+            <div style="font-size:12px;color:#8B7E74">Miss a day without breaking your streak</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;background:#FFF8E1;border-radius:14px;padding:12px 14px">
+          <div style="width:34px;height:34px;border-radius:10px;background:#E0A830;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="#fff" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </div>
+          <div>
+            <div style="font-size:14px;font-weight:800;color:#3D3229">1.5&#xD7; XP &amp; Coins</div>
+            <div style="font-size:12px;color:#8B7E74">Earn faster on every session</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;background:#E8F4FD;border-radius:14px;padding:12px 14px">
+          <div style="width:34px;height:34px;border-radius:10px;background:#2196F3;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+          </div>
+          <div>
+            <div style="font-size:14px;font-weight:800;color:#3D3229">Full Analytics</div>
+            <div style="font-size:12px;color:#8B7E74">Track every stat and milestone</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;background:#FCE4EC;border-radius:14px;padding:12px 14px">
+          <div style="width:34px;height:34px;border-radius:10px;background:#E91E63;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M6 12v8"/><path d="M18 12v8"/><path d="M3 20h18"/></svg>
+          </div>
+          <div>
+            <div style="font-size:14px;font-weight:800;color:#3D3229">Exclusive Skins</div>
+            <div style="font-size:12px;color:#8B7E74">Golden, Midnight &amp; Sakura koala</div>
+          </div>
+        </div>
+      </div>
+      <!-- Price + CTA -->
+      <div style="text-align:center;margin-bottom:14px">
+        <div style="font-size:28px;font-weight:900;color:#1A0A2E">$3.99<span style="font-size:15px;font-weight:600;color:#8B7E74"> / month</span></div>
+        <div style="font-size:12px;color:#B8AFA6;margin-top:2px">Cancel anytime in App Store Settings</div>
+      </div>
+      <button onclick="closePremiumOnboarding();purchasePremium()" style="width:100%;padding:16px;background:linear-gradient(135deg,#6B3FDB,#9B6FDB);color:#fff;font-size:17px;font-weight:900;border:none;border-radius:16px;cursor:pointer;font-family:inherit;box-shadow:0 6px 24px rgba(107,63,219,.4);letter-spacing:.3px">
+        Unlock Premium <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <button onclick="closePremiumOnboarding()" style="width:100%;padding:13px;background:none;color:#B8AFA6;font-size:14px;font-weight:600;border:none;cursor:pointer;font-family:inherit;margin-top:8px">
+        Not now
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Stub callbacks so Swift can call them before the ES6 module finishes loading -->
+<script>
+  window.onPremiumStatusChecked = function(d) { window._pendingPremiumStatus = d; };
+  window.onPremiumPurchaseFailed = function(e) { window._pendingPremiumFail = e; console.warn('[Premium] early fail:', e); };
+  window.onSubscriptionStarted = function(d) { window._pendingSubscriptionStarted = d; };
+  window.onSubscriptionCancelled = function() { window._pendingSubscriptionCancelled = true; };
+</script>
+<script type="module" src="app.js"></script>
+</body>
+</html>

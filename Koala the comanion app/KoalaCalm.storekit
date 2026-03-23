@@ -1,0 +1,47 @@
+{
+  "identifier" : "KoalaCalm",
+  "nonConsumableProducts" : [],
+  "consumableProducts" : [],
+  "products" : [],
+  "settings" : {
+    "_applicationInternalID" : "000000001",
+    "_developerTeamID" : "",
+    "_timeRate" : 1,
+    "storefront" : "USA"
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "koalacalm.premium.group",
+      "localizations" : [],
+      "name" : "Koala Calm Premium",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "3.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "koalacalm_premium_001",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Unlock exclusive skins, bonus XP, streak protection and more.",
+              "displayName" : "Koala Calm Premium",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.dylaneyan.koalacalm.premium.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Premium Monthly",
+          "reviewNote" : "",
+          "subscriptionGroupID" : "koalacalm.premium.group",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 2,
+    "minor" : 0
+  }
+}

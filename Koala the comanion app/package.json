@@ -1,0 +1,14 @@
+{
+  "name": "koala-calm",
+  "version": "1.0.0",
+  "description": "Koala Calm — a screen-time companion app with an animated koala",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx serve . -p 3000 --cors"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "serve": "^14.0.0"
+  }
+}
