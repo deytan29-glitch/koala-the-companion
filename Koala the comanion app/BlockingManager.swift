@@ -17,7 +17,6 @@ import DeviceActivity
 // MARK: ── Blocking Manager ────────────────────────────────────────────────
 
 @Observable
-@MainActor
 final class BlockingManager {
 
     // ── Public state observed by HomeView ──

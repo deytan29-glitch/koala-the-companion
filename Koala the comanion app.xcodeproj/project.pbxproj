@@ -11,11 +11,9 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		CB2031C12F82E000003D5B57 /* koala the companion.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "koala the companion.xcodeproj"; sourceTree = "<group>"; };
+		CB5A000100B0C0D0E0F00001 /* Subscriptions.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; name = Subscriptions.storekit; path = "Koala the comanion app/Subscriptions.storekit"; sourceTree = SOURCE_ROOT; };
 		CB6B0B122F71BC69007C6C34 /* Koala the comanion app.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Koala the comanion app.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		CBD0F6762F81F5BE006E6029 /* koala the companion.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "koala the companion.xcodeproj"; sourceTree = "<group>"; };
 		CBE5EB152F7336FF009C93F1 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
-		CBE5EB992F741569009C93F1 /* koala the companion.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "koala the companion.xcodeproj"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -38,15 +36,11 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		CB2031E62F82E000003D5B57 /* Products */ = {
-			isa = PBXGroup;
-			name = Products;
-			sourceTree = "<group>";
-		};
 		CB6B0B092F71BC69007C6C34 = {
 			isa = PBXGroup;
 			children = (
 				CB6B0B142F71BC69007C6C34 /* Koala the comanion app */,
+				CB5A000100B0C0D0E0F00001 /* Subscriptions.storekit */,
 				CBE5EB142F7336FF009C93F1 /* Frameworks */,
 				CB6B0B132F71BC69007C6C34 /* Products */,
 			);
@@ -60,22 +54,12 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		CBD0F6982F81F5BE006E6029 /* Products */ = {
-			isa = PBXGroup;
-			name = Products;
-			sourceTree = "<group>";
-		};
 		CBE5EB142F7336FF009C93F1 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				CBE5EB152F7336FF009C93F1 /* StoreKit.framework */,
 			);
 			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		CBE5EBB92F741569009C93F1 /* Products */ = {
-			isa = PBXGroup;
-			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -130,20 +114,6 @@
 			preferredProjectObjectVersion = 77;
 			productRefGroup = CB6B0B132F71BC69007C6C34 /* Products */;
 			projectDirPath = "";
-			projectReferences = (
-				{
-					ProductGroup = CBD0F6982F81F5BE006E6029 /* Products */;
-					ProjectRef = CBD0F6762F81F5BE006E6029 /* koala the companion.xcodeproj */;
-				},
-				{
-					ProductGroup = CB2031E62F82E000003D5B57 /* Products */;
-					ProjectRef = CB2031C12F82E000003D5B57 /* koala the companion.xcodeproj */;
-				},
-				{
-					ProductGroup = CBE5EBB92F741569009C93F1 /* Products */;
-					ProjectRef = CBE5EB992F741569009C93F1 /* koala the companion.xcodeproj */;
-				},
-			);
 			projectRoot = "";
 			targets = (
 				CB6B0B112F71BC69007C6C34 /* Koala the comanion app */,

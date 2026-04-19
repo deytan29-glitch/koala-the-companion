@@ -54,34 +54,31 @@ enum TimeOfDay {
 
 // MARK: ── Koala Activity ──────────────────────────────────────────────────
 enum KoalaActivity: CaseIterable, Equatable {
-    case painting, stretching, reading, exercising, eating
+    case painting, stretching, yoga, exercising
 
     static func forCurrentHour() -> KoalaActivity {
         let h = Calendar.current.component(.hour, from: Date())
         switch h {
-        case 6..<11:  return .stretching   // morning: yoga / stretching
-        case 11..<16: return .painting     // midday: creative painting
-        case 16..<21: return .reading      // afternoon/evening: reading
-        case 21..<24: return .exercising   // night wind-down: light exercise
-        default:      return .eating       // late night / early morning: snacking
+        case 5..<11:  return .yoga         // early/morning: yoga
+        case 11..<15: return .painting     // midday: creative painting
+        case 15..<20: return .stretching   // afternoon: stretching
+        default:      return .exercising   // evening/night: light exercise
         }
     }
     var label: String {
         switch self {
         case .painting:   return "Painting"
         case .stretching: return "Stretching"
-        case .reading:    return "Reading"
+        case .yoga:       return "Yoga"
         case .exercising: return "Exercising"
-        case .eating:     return "Snacking"
         }
     }
     var sfIcon: String {
         switch self {
         case .painting:   return "paintbrush.fill"
         case .stretching: return "figure.flexibility"
-        case .reading:    return "book.fill"
+        case .yoga:       return "figure.mind.and.body"
         case .exercising: return "figure.run"
-        case .eating:     return "fork.knife"
         }
     }
 }
@@ -105,6 +102,50 @@ private extension Color {
     static let pillBlue = Color(red:0.77, green:0.89, blue:0.97)
 }
 
+// MARK: ── Premium Status (shared across views) ───────────────────────────
+@Observable final class PremiumStatus {
+    static let shared = PremiumStatus()
+    // Always starts false — confirmed via StoreKit on every launch in HomeView.onAppear
+    var isSubscribed: Bool = false
+}
+
+// MARK: ── Premium Status Check (free function, callable from HomeView + AppApp) ──
+/// Checks current entitlements AND whether auto-renewal is still on.
+/// Cancelling a subscription (willAutoRenew = false) removes access immediately.
+@MainActor
+func refreshPremiumStatus() async {
+    let productID = "com.dylaneyan.koalacalm.premium.monthly"
+    var isActive = false
+
+    // Step 1: scan current entitlements for a non-expired, non-revoked transaction
+    for await result in Transaction.currentEntitlements {
+        if case .verified(let tx) = result, tx.productID == productID {
+            let notExpired = tx.expirationDate.map { $0 > Date() } ?? true
+            let notRevoked = tx.revocationDate == nil
+            if notExpired && notRevoked { isActive = true }
+        }
+    }
+
+    // Step 2: if an entitlement was found, also verify willAutoRenew.
+    // When a user cancels (turns off auto-renewal) we remove access immediately
+    // rather than waiting for the billing period to end.
+    if isActive {
+        if let products = try? await Product.products(for: [productID]),
+           let product = products.first,
+           let statuses = try? await product.subscription?.status {
+            for status in statuses {
+                if case .verified(let renewalInfo) = status.renewalInfo {
+                    if !renewalInfo.willAutoRenew {
+                        isActive = false
+                    }
+                }
+            }
+        }
+    }
+
+    PremiumStatus.shared.isSubscribed = isActive
+}
+
 // MARK: ── Shop Item Model ─────────────────────────────────────────────────
 struct ShopItem: Identifiable {
     let id: String
@@ -114,6 +155,8 @@ struct ShopItem: Identifiable {
     let description: String
     let requiredLevel: Int
     var owned: Bool = false
+    var requiresItem: String? = nil   // Must own this item id first
+    var requiresPremium: Bool = false // Must have active premium subscription
 }
 
 // MARK: ── View Model ──────────────────────────────────────────────────────
@@ -134,9 +177,34 @@ struct ShopItem: Identifiable {
         let today = Calendar.current.ordinality(of: .day, in: .year, for: Date()) ?? 1
         return Set((0..<7).map { today - $0 })
     }()
+    /// day-of-year → phone minutes reported at check-in
+    var checkInMinutes: [Int: Int] = {
+        // Seed plausible demo data for the last 7 days so the chart isn't empty
+        let today = Calendar.current.ordinality(of: .day, in: .year, for: Date()) ?? 1
+        let vals = [138, 95, 210, 75, 162, 188, 110]
+        var dict = [Int: Int]()
+        for (i, v) in vals.enumerated() { dict[today - i] = v }
+        return dict
+    }()
 
     init() {
         self.petName = UserDefaults.standard.string(forKey: "koalaName") ?? ""
+        // Restore purchased items from UserDefaults
+        if let savedOwned = UserDefaults.standard.array(forKey: "koala_owned_items") as? [String] {
+            for i in shopItems.indices {
+                shopItems[i].owned = savedOwned.contains(shopItems[i].id)
+            }
+        }
+        // On very first launch, save the defaults
+        if UserDefaults.standard.object(forKey: "koala_owned_items") == nil {
+            let defaultOwned = shopItems.filter(\.owned).map(\.id)
+            UserDefaults.standard.set(defaultOwned, forKey: "koala_owned_items")
+        }
+    }
+
+    private func saveOwnedItems() {
+        let ids = shopItems.filter(\.owned).map(\.id)
+        UserDefaults.standard.set(ids, forKey: "koala_owned_items")
     }
 
     var needsNaming: Bool { petName.isEmpty }
@@ -185,20 +253,16 @@ struct ShopItem: Identifiable {
 
     var shopItems: [ShopItem] = [
         // Level 1 — starter items
-        ShopItem(id:"candle",        name:"Candle Set",        sfIcon:"flame",                cost:15,  description:"Warm ambient glow",        requiredLevel:1, owned: true),
-        ShopItem(id:"cozy_lamp",     name:"Cozy Lamp",         sfIcon:"lightbulb.fill",       cost:25,  description:"Soft reading light",       requiredLevel:1, owned: true),
-        ShopItem(id:"rug",           name:"Woven Rug",         sfIcon:"square.grid.3x3.fill", cost:50,  description:"Colourful floor rug",      requiredLevel:1, owned: true),
+        ShopItem(id:"couch",      name:"Cozy Sofa",      sfIcon:"rectangle.fill",       cost:10,  description:"A plush sofa for your room",      requiredLevel:1, owned: true, requiresPremium: true),
+        ShopItem(id:"candle",     name:"Candle Set",     sfIcon:"flame",                cost:15,  description:"Warm ambient glow",               requiredLevel:1, owned: true),
+        ShopItem(id:"rug",        name:"Woven Rug",      sfIcon:"square.grid.3x3.fill", cost:50,  description:"Colourful floor rug",             requiredLevel:1, owned: true),
+        ShopItem(id:"side_table", name:"Side Table",     sfIcon:"square.fill",          cost:60,  description:"A wooden side table",             requiredLevel:1),
+        ShopItem(id:"cozy_lamp",  name:"Night Lamp",     sfIcon:"lamp.table.fill",      cost:90,  description:"A warm lamp — needs a side table",requiredLevel:1, requiresItem:"side_table"),
+        ShopItem(id:"side_plant", name:"Table Plant",    sfIcon:"leaf.fill",            cost:70,  description:"A little potted plant — needs a side table", requiredLevel:1, requiresItem:"side_table"),
         // Level 2 — unlocked at 300 XP
-        ShopItem(id:"cushion",       name:"Throw Cushion",     sfIcon:"heart.fill",           cost:80,  description:"Extra cozy sofa pillow",   requiredLevel:2),
+        ShopItem(id:"cushion",    name:"Throw Cushions", sfIcon:"heart.fill",           cost:80,  description:"Cozy decorative sofa pillows",    requiredLevel:2, owned: true, requiresPremium: true),
         // Level 3 — unlocked at 800 XP
-        ShopItem(id:"aquarium",      name:"Aquarium",          sfIcon:"fish.fill",            cost:230, description:"Tropical fish tank",       requiredLevel:3),
-        ShopItem(id:"fireplace",     name:"Cozy Fireplace",    sfIcon:"flame.fill",           cost:200, description:"Warm crackling fire",      requiredLevel:3),
-        ShopItem(id:"zen_garden",    name:"Zen Garden",        sfIcon:"square.on.circle",     cost:170, description:"Miniature raked sand",     requiredLevel:3),
-        // Level 4 — unlocked at 1500 XP
-        ShopItem(id:"piano",         name:"Mini Piano",        sfIcon:"pianokeys",            cost:320, description:"A cozy corner piano",      requiredLevel:4),
-        ShopItem(id:"star_mobile",   name:"Star Mobile",       sfIcon:"moon.stars.fill",      cost:500, description:"Twinkling ceiling décor",  requiredLevel:4),
-        // Level 5 — unlocked at 2500 XP
-        ShopItem(id:"royal_throne",  name:"Royal Throne",      sfIcon:"crown.fill",           cost:750, description:"Majestic velvet seat",     requiredLevel:5),
+        ShopItem(id:"fireplace",  name:"Cozy Fireplace", sfIcon:"flame.fill",           cost:200, description:"Warm crackling fire",             requiredLevel:3, owned: true, requiresPremium: true),
     ]
 
     var level: Int {
@@ -216,8 +280,18 @@ struct ShopItem: Identifiable {
               !shopItems[idx].owned,
               level >= shopItems[idx].requiredLevel,
               coins >= shopItems[idx].cost else { return false }
+        // Gate: if item requires premium and user doesn't have premium
+        if shopItems[idx].requiresPremium && !PremiumStatus.shared.isSubscribed {
+            return false
+        }
+        // Gate: if this item requires another item, that one must be owned
+        if let req = shopItems[idx].requiresItem,
+           !(shopItems.first(where:{$0.id == req})?.owned ?? false) {
+            return false
+        }
         coins -= shopItems[idx].cost
         shopItems[idx].owned = true
+        saveOwnedItems()
         return true
     }
 
@@ -225,15 +299,45 @@ struct ShopItem: Identifiable {
         Set(shopItems.filter(\.owned).map(\.id))
     }
 
-    func doCheckIn(mood: Int) {
+    /// phoneMinutes: total minutes user reported being on phone
+    /// Returns (coinsEarned, xpEarned) so the sheet can show them.
+    @discardableResult
+    func doCheckIn(mood: Int, phoneMinutes: Int) -> (coins: Int, xp: Int) {
         let day = Calendar.current.ordinality(of: .day, in: .year, for: Date()) ?? 1
-        guard !checkedInDays.contains(day) else { return }
+        guard !checkedInDays.contains(day) else { return (0, 0) }
         checkedInDays.insert(day)
+        checkInMinutes[day] = phoneMinutes
         streakDays += 1
         if streakDays > bestStreak { bestStreak = streakDays }
-        coins  += 15
-        xp     += 100
         energy = min(100, energy + 10)
+
+        let goalTotal = goalHours * 60 + goalMinutes
+        var coinsEarned: Int
+        var xpEarned:    Int
+
+        if phoneMinutes < goalTotal {
+            // Under goal — full reward
+            coinsEarned = 15
+            xpEarned    = 100
+        } else if phoneMinutes == goalTotal {
+            // Hit goal exactly — XP only
+            coinsEarned = 0
+            xpEarned    = 100
+        } else {
+            // Over goal — no reward
+            coinsEarned = 0
+            xpEarned    = 0
+        }
+
+        // Apply 1.5× multiplier if premium
+        if PremiumStatus.shared.isSubscribed {
+            coinsEarned = Int(Double(coinsEarned) * 1.5)
+            xpEarned    = Int(Double(xpEarned) * 1.5)
+        }
+
+        coins += coinsEarned
+        xp    += xpEarned
+        return (coinsEarned, xpEarned)
     }
 
     var todayCheckedIn: Bool {
@@ -244,6 +348,8 @@ struct ShopItem: Identifiable {
 
 // MARK: ── HomeView ────────────────────────────────────────────────────────
 struct HomeView: View {
+    @Environment(\.scenePhase) private var scenePhase
+
     @State private var vm        = KoalaHomeViewModel()
     @State private var tod       = TimeOfDay.current
     @State private var topSafeInset: CGFloat = 59   // real UIKit safe-area top
@@ -332,6 +438,9 @@ struct HomeView: View {
                 .first(where: { $0.isKeyWindow }) {
                 topSafeInset = win.safeAreaInsets.top
             }
+            // Restore dark mode preference
+            isDarkMode = UserDefaults.standard.bool(forKey: "darkMode")
+            if isDarkMode { tod = .night }
             blocking.checkAuthorization()
             runEntrance()
             runIdle()
@@ -339,6 +448,27 @@ struct HomeView: View {
             fetchWeather()
             if vm.needsNaming {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { showNamingSheet = true }
+            }
+            // Check subscription status on every launch (detects cancellations too)
+            Task { await refreshPremiumStatus() }
+        }
+        // ── StoreKit transaction listener — runs for the lifetime of HomeView ──
+        // After ANY transaction event (renewal, revocation, cancellation) re-run
+        // the full status check so willAutoRenew=false is caught immediately.
+        .task {
+            for await result in Transaction.updates {
+                if case .verified(let tx) = result {
+                    await tx.finish()
+                }
+                // Full re-validation after every StoreKit event
+                await refreshPremiumStatus()
+            }
+        }
+        // Re-validate every time the app comes back to the foreground
+        // (catches cancellations made via App Store subscription settings)
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                Task { await refreshPremiumStatus() }
             }
         }
         .sheet(isPresented: $showPicker) {
@@ -356,6 +486,21 @@ struct HomeView: View {
             if vm.petName.isEmpty { vm.petName = "Koala" }
         }) {
             KoalaNamingSheet(vm: vm, namingText: $namingText, isPresented: $showNamingSheet)
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsSheet(
+                isPresented: $showSettings,
+                isDarkMode: $isDarkMode,
+                vm: vm,
+                onRenameKoala: {
+                    namingText = vm.petName
+                    showNamingSheet = true
+                }
+            )
+        }
+        .onChange(of: isDarkMode) { _, newValue in
+            tod = newValue ? .night : TimeOfDay.current
+            UserDefaults.standard.set(newValue, forKey: "darkMode")
         }
         .alert("Already checked in!", isPresented: $showDoneAlert) {
             Button("OK", role: .cancel) {}
@@ -388,7 +533,7 @@ struct HomeView: View {
             Color.clear.frame(height: safeTop)
 
             // ── Top bar ───────────────────────────────────────────
-            TopBarView(vm: vm, tod: tod, weather: weatherText)
+            TopBarView(vm: vm, tod: tod, showSettings: $showSettings)
                 .padding(.horizontal, 20)
                 .frame(height: topBarH)
 
@@ -408,51 +553,6 @@ struct HomeView: View {
             // ── Stats section ─────────────────────────────────────
             VStack(spacing: 0) {
 
-                // Energy row
-                HStack {
-                    Text("Energy")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundColor(energyColor)
-                    Spacer()
-                    Text("\(vm.energy)%")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundColor(energyColor)
-                }
-                .padding(.horizontal, 24)
-                .padding(.top, 8)
-
-                // Bar
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color(red:0.90,green:0.88,blue:0.84))
-                        .frame(height: 8)
-                    GeometryReader { bg in
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(LinearGradient(colors: energyBarColors, startPoint: .leading, endPoint: .trailing))
-                            .frame(width: max(bg.size.width * CGFloat(vm.energy) / 100.0, 4), height: 8)
-                    }
-                    .frame(height: 8)
-                }
-                .frame(height: 8)
-                .padding(.horizontal, 24)
-                .padding(.top, 4)
-
-                // Mood
-                HStack {
-                    HStack(spacing: 5) {
-                        Image(systemName: vm.moodSFSymbol)
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(vm.moodSymbolColor)
-                        Text(vm.mood)
-                            .font(.system(size: 12, weight: .bold, design: .rounded))
-                            .foregroundColor(tod.textColor)
-                    }
-                    .padding(.horizontal, 10).padding(.vertical, 5)
-                    .background(RoundedRectangle(cornerRadius: 12).fill(vm.moodColor))
-                    Spacer()
-                }
-                .padding(.horizontal, 24)
-                .padding(.top, 7)
 
                 // TODAY'S GOAL divider
                 HStack(spacing: 8) {
@@ -493,22 +593,34 @@ struct HomeView: View {
                 }
                 .padding(.top, 4)
 
-                // Streak badge (centered)
+                // Streak badge (centered, larger card)
                 if vm.streakDays >= 1 {
-                    HStack(spacing: 6) {
-                        Image(systemName: "flame.fill")
-                            .font(.system(size: 13))
-                            .foregroundColor(Color(red:0.88,green:0.66,blue:0.19))
-                        Text("\(vm.streakDays) day streak!")
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundColor(Color(red:0.72,green:0.54,blue:0.12))
+                    VStack(spacing: 2) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "flame.fill")
+                                .font(.system(size: 28, weight: .bold))
+                                .foregroundColor(Color(red:0.96,green:0.55,blue:0.10))
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text("\(vm.streakDays) day streak!")
+                                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                                    .foregroundColor(Color(red:0.62,green:0.42,blue:0.06))
+                                Text("Keep it going — check in daily!")
+                                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                                    .foregroundColor(Color(red:0.72,green:0.54,blue:0.12).opacity(0.8))
+                            }
+                        }
                     }
-                    .padding(.horizontal, 14).padding(.vertical, 6)
-                    .background(Capsule().fill(LinearGradient(
-                        colors: [Color(red:1.00,green:0.95,blue:0.84), Color(red:1.00,green:0.91,blue:0.72)],
-                        startPoint: .leading, endPoint: .trailing)))
-                    .shadow(color: Color.kGold.opacity(0.18), radius: 4, x: 0, y: 2)
-                    .padding(.top, 4)
+                    .padding(.horizontal, 20).padding(.vertical, 12)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(LinearGradient(
+                                colors: [Color(red:1.00,green:0.96,blue:0.82), Color(red:1.00,green:0.91,blue:0.68)],
+                                startPoint: .topLeading, endPoint: .bottomTrailing))
+                            .shadow(color: Color.kGold.opacity(0.22), radius: 8, x: 0, y: 3)
+                    )
+                    .padding(.horizontal, 24)
+                    .padding(.top, 6)
                 }
 
                 // Action buttons
@@ -540,7 +652,7 @@ struct HomeView: View {
 
                     // Block session green button
                     Button(action: blocking.isSessionActive
-                           ? { withAnimation { blocking.endBlockSession() } }
+                           ? { Task { @MainActor in withAnimation { blocking.endBlockSession() } } }
                            : handleStartBlock) {
                         HStack(spacing: 8) {
                             Image(systemName: blocking.isSessionActive ? "shield.slash.fill" : "shield.fill")
@@ -604,7 +716,7 @@ struct HomeView: View {
     private func startActivityTimer() {
         Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { _ in
             DispatchQueue.main.async {
-                tod = TimeOfDay.current
+                if !isDarkMode { tod = TimeOfDay.current }
                 vm.currentActivity = KoalaActivity.forCurrentHour()
             }
         }
@@ -794,8 +906,28 @@ struct NightlyCheckInSheet: View {
     let vm: KoalaHomeViewModel
     @Environment(\.dismiss) private var dismiss
 
-    @State private var selectedMood = 3
-    @State private var submitted    = false
+    @State private var selectedMood    = 3
+    @State private var reflectionText  = ""
+    @State private var phoneHours      = 0
+    @State private var phoneMinutes    = 0
+    @State private var submitted       = false
+    @State private var earnedCoins     = 0
+    @State private var earnedXP        = 0
+
+    private var wordCount: Int {
+        reflectionText.split(whereSeparator: { $0.isWhitespace }).filter { !$0.isEmpty }.count
+    }
+    private var canSubmit: Bool { wordCount >= 5 }
+
+    private var totalPhoneMinutes: Int { phoneHours * 60 + phoneMinutes }
+    private var goalTotal: Int { vm.goalHours * 60 + vm.goalMinutes }
+
+    private var phoneCompare: PhoneResult {
+        if totalPhoneMinutes < goalTotal  { return .under }
+        if totalPhoneMinutes == goalTotal { return .onGoal }
+        return .over
+    }
+    enum PhoneResult { case under, onGoal, over }
 
     private let moods: [(Int, String, Color)] = [
         (1, "Rough",   Color(red:0.65,green:0.68,blue:0.90)),
@@ -867,9 +999,138 @@ struct NightlyCheckInSheet: View {
                     .padding(.horizontal, 20)
                 }
 
-                // Submit — GOLD
+                // Reflection section
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("DAILY REFLECTION")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundColor(.secondary)
+                        .tracking(1.2)
+                    Text("How did you feel today? What do you need?")
+                        .font(.system(size: 13, design: .rounded))
+                        .foregroundColor(.secondary)
+
+                    ZStack(alignment: .topLeading) {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color(red:0.96,green:0.95,blue:0.92))
+                            .frame(minHeight: 90)
+                        if reflectionText.isEmpty {
+                            Text("Write at least 5 words…")
+                                .font(.system(size: 14, design: .rounded))
+                                .foregroundColor(Color.secondary.opacity(0.55))
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 10)
+                        }
+                        TextEditor(text: $reflectionText)
+                            .font(.system(size: 14, design: .rounded))
+                            .frame(minHeight: 90)
+                            .scrollContentBackground(.hidden)
+                            .background(Color.clear)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 6)
+                    }
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(canSubmit ? Color(red:0.45,green:0.80,blue:0.55) : Color(red:0.88,green:0.84,blue:0.80), lineWidth: 1.5)
+                    )
+
+                    HStack {
+                        Spacer()
+                        Text("\(wordCount)/5 words")
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundColor(canSubmit ? Color(red:0.30,green:0.68,blue:0.40) : .secondary)
+                    }
+                }
+                .padding(.horizontal, 20)
+
+                // ── Phone screen time ─────────────────────────────
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("SCREEN TIME TODAY")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundColor(.secondary)
+                        .tracking(1.2)
+                    Text("How long were you on your phone?")
+                        .font(.system(size: 13, design: .rounded))
+                        .foregroundColor(.secondary)
+
+                    HStack(spacing: 16) {
+                        // Hours picker
+                        VStack(spacing: 4) {
+                            Text("Hours")
+                                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                .foregroundColor(.secondary)
+                            HStack(spacing: 12) {
+                                Button(action: { if phoneHours > 0 { phoneHours -= 1 } }) {
+                                    Image(systemName: "minus.circle.fill")
+                                        .font(.system(size: 22))
+                                        .foregroundColor(Color(red:0.52,green:0.34,blue:0.80))
+                                }
+                                Text("\(phoneHours)")
+                                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                                    .frame(minWidth: 28)
+                                Button(action: { if phoneHours < 23 { phoneHours += 1 } }) {
+                                    Image(systemName: "plus.circle.fill")
+                                        .font(.system(size: 22))
+                                        .foregroundColor(Color(red:0.52,green:0.34,blue:0.80))
+                                }
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(RoundedRectangle(cornerRadius: 12).fill(Color(red:0.96,green:0.94,blue:0.99)))
+
+                        // Minutes picker
+                        VStack(spacing: 4) {
+                            Text("Minutes")
+                                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                .foregroundColor(.secondary)
+                            HStack(spacing: 12) {
+                                Button(action: { if phoneMinutes > 0 { phoneMinutes -= 1 } else if phoneHours > 0 { phoneHours -= 1; phoneMinutes = 59 } }) {
+                                    Image(systemName: "minus.circle.fill")
+                                        .font(.system(size: 22))
+                                        .foregroundColor(Color(red:0.52,green:0.34,blue:0.80))
+                                }
+                                Text(String(format: "%02d", phoneMinutes))
+                                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                                    .frame(minWidth: 28)
+                                Button(action: { if phoneMinutes < 59 { phoneMinutes += 1 } else { phoneHours += 1; phoneMinutes = 0 } }) {
+                                    Image(systemName: "plus.circle.fill")
+                                        .font(.system(size: 22))
+                                        .foregroundColor(Color(red:0.52,green:0.34,blue:0.80))
+                                }
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(RoundedRectangle(cornerRadius: 12).fill(Color(red:0.96,green:0.94,blue:0.99)))
+                    }
+
+                    // Live reward preview
+                    let previewColor: Color = phoneCompare == .under ? Color(red:0.28,green:0.70,blue:0.38)
+                                           : phoneCompare == .onGoal ? Color(red:0.52,green:0.34,blue:0.80)
+                                           : Color(red:0.78,green:0.28,blue:0.22)
+                    let previewIcon = phoneCompare == .under  ? "checkmark.seal.fill"
+                                   : phoneCompare == .onGoal ? "equal.circle.fill"
+                                   : "exclamationmark.circle.fill"
+                    let previewText = phoneCompare == .under  ? "Under goal — +15 coins & +100 XP!"
+                                   : phoneCompare == .onGoal ? "On goal — +100 XP"
+                                   : "Over goal — no reward this check-in"
+                    HStack(spacing: 8) {
+                        Image(systemName: previewIcon)
+                        Text(previewText)
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    }
+                    .foregroundColor(previewColor)
+                    .padding(.horizontal, 12).padding(.vertical, 8)
+                    .background(RoundedRectangle(cornerRadius: 10).fill(previewColor.opacity(0.10)))
+                }
+                .padding(.horizontal, 20)
+
+                // Submit — GOLD (disabled until 5 words written)
                 Button(action: {
-                    vm.doCheckIn(mood: selectedMood)
+                    guard canSubmit else { return }
+                    let result = vm.doCheckIn(mood: selectedMood, phoneMinutes: totalPhoneMinutes)
+                    earnedCoins = result.coins
+                    earnedXP    = result.xp
                     withAnimation(.spring()) { submitted = true }
                 }) {
                     HStack(spacing: 8) {
@@ -883,14 +1144,14 @@ struct NightlyCheckInSheet: View {
                     .frame(height: 54)
                     .background(
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(LinearGradient(
-                                colors: [Color.kGoldTop, Color.kGoldBot],
-                                startPoint: .top, endPoint: .bottom
-                            ))
+                            .fill(canSubmit
+                                  ? AnyShapeStyle(LinearGradient(colors: [Color.kGoldTop, Color.kGoldBot], startPoint: .top, endPoint: .bottom))
+                                  : AnyShapeStyle(Color(red:0.80,green:0.78,blue:0.74)))
                     )
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .shadow(color: Color.kBtnGold.opacity(0.40), radius: 10, x: 0, y: 4)
+                    .shadow(color: canSubmit ? Color.kBtnGold.opacity(0.40) : .clear, radius: 10, x: 0, y: 4)
                 }
+                .disabled(!canSubmit)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 32)
             }
@@ -900,20 +1161,36 @@ struct NightlyCheckInSheet: View {
     private var successView: some View {
         VStack(spacing: 20) {
             Spacer()
-            Image(systemName: "moon.stars.fill")
+            Image(systemName: earnedCoins > 0 ? "moon.stars.fill"
+                           : earnedXP > 0    ? "star.fill"
+                                             : "moon.zzz.fill")
                 .font(.system(size: 64))
-                .foregroundColor(Color(red:0.40,green:0.30,blue:0.65))
+                .foregroundColor(earnedCoins > 0 ? Color(red:0.40,green:0.30,blue:0.65)
+                               : earnedXP > 0    ? Color(red:0.52,green:0.34,blue:0.80)
+                                                  : Color(red:0.55,green:0.52,blue:0.50))
             Text("Check-in complete!")
                 .font(.system(size: 24, weight: .bold, design: .rounded))
-            HStack(spacing: 12) {
-                Label("+15 coins", systemImage: "dollarsign.circle.fill")
-                    .foregroundColor(Color(red:0.70,green:0.50,blue:0.10))
-                Label("+100 XP", systemImage: "star.fill")
-                    .foregroundColor(Color(red:0.52,green:0.34,blue:0.80))
-                Label("+1 leaf", systemImage: "leaf.fill")
-                    .foregroundColor(Color(red:0.27,green:0.67,blue:0.29))
+
+            // Reward row — dynamic based on what was earned
+            if earnedCoins > 0 || earnedXP > 0 {
+                HStack(spacing: 16) {
+                    if earnedCoins > 0 {
+                        Label("+\(earnedCoins) coins", systemImage: "dollarsign.circle.fill")
+                            .foregroundColor(Color(red:0.70,green:0.50,blue:0.10))
+                    }
+                    if earnedXP > 0 {
+                        Label("+\(earnedXP) XP", systemImage: "star.fill")
+                            .foregroundColor(Color(red:0.52,green:0.34,blue:0.80))
+                    }
+                }
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
+            } else {
+                Text("No reward — you were over your screen time goal.")
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundColor(Color(red:0.65,green:0.30,blue:0.25))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
             }
-            .font(.system(size: 14, weight: .semibold, design: .rounded))
 
             HStack(spacing: 6) {
                 Image(systemName: "flame.fill").foregroundColor(.orange)
@@ -1026,9 +1303,34 @@ struct ShopTabView: View {
 
                             LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
                                 ForEach(items) { item in
-                                    AllStateShopCard(item: item, currentLevel: vm.level, coins: vm.coins) {
+                                    AllStateShopCard(
+                                        item: item,
+                                        currentLevel: vm.level,
+                                        coins: vm.coins,
+                                        ownedIDs: vm.ownedItemIDs,
+                                        requiredName: item.requiresItem.flatMap { reqId in
+                                            vm.shopItems.first(where:{$0.id == reqId})?.name
+                                        }
+                                    ) {
                                         if vm.buyItem(id: item.id) {
                                             withAnimation(.spring()) { toast = "\(item.name) added!" }
+                                            DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
+                                                withAnimation { toast = nil }
+                                            }
+                                        } else if item.requiresPremium && !PremiumStatus.shared.isSubscribed {
+                                            withAnimation(.spring()) { toast = "Premium members only" }
+                                            DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
+                                                withAnimation { toast = nil }
+                                            }
+                                        } else if let req = item.requiresItem,
+                                                  !vm.ownedItemIDs.contains(req),
+                                                  let reqName = vm.shopItems.first(where:{$0.id == req})?.name {
+                                            withAnimation(.spring()) { toast = "Buy \(reqName) first" }
+                                            DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
+                                                withAnimation { toast = nil }
+                                            }
+                                        } else if vm.coins < item.cost {
+                                            withAnimation(.spring()) { toast = "Not enough coins" }
                                             DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
                                                 withAnimation { toast = nil }
                                             }
@@ -1051,10 +1353,17 @@ private struct AllStateShopCard: View {
     let item: ShopItem
     let currentLevel: Int
     let coins: Int
+    let ownedIDs: Set<String>
+    let requiredName: String?
     let onBuy: () -> Void
 
-    private var isLocked:  Bool { currentLevel < item.requiredLevel }
-    private var canAfford: Bool { coins >= item.cost }
+    private var isLocked:      Bool { currentLevel < item.requiredLevel }
+    private var premiumLocked: Bool { item.requiresPremium && !PremiumStatus.shared.isSubscribed }
+    private var canAfford:     Bool { coins >= item.cost }
+    private var missingPrereq: Bool {
+        if let req = item.requiresItem { return !ownedIDs.contains(req) }
+        return false
+    }
 
     var body: some View {
         VStack(spacing: 8) {
@@ -1063,37 +1372,74 @@ private struct AllStateShopCard: View {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(item.owned
                           ? Color(red:0.88,green:0.96,blue:0.88)
-                          : isLocked ? Color(red:0.92,green:0.92,blue:0.92)
+                          : (isLocked || missingPrereq || premiumLocked) ? Color(red:0.92,green:0.92,blue:0.92)
                           : canAfford ? Color(red:0.94,green:0.92,blue:0.99)
                           : Color(red:0.94,green:0.94,blue:0.94))
                     .frame(height: 68)
-                ShopItemIllustration(id: item.id, icon: item.sfIcon, canAfford: !isLocked && !item.owned)
+                ShopItemIllustration(id: item.id, icon: item.sfIcon, canAfford: !isLocked && !missingPrereq && !premiumLocked && !item.owned)
                     .frame(width: 48, height: 48)
-                    .opacity(item.owned ? 0.60 : isLocked ? 0.35 : 1.0)
-                // Status badge
-                Group {
-                    if item.owned {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(Color.kLeaf).font(.system(size: 15))
-                    } else if isLocked {
-                        Image(systemName: "lock.fill")
-                            .foregroundColor(.gray).font(.system(size: 13))
-                    }
+                    .opacity(item.owned ? 0.60 : (isLocked || missingPrereq || premiumLocked) ? 0.35 : 1.0)
+            }
+            .frame(height: 68)
+            .overlay(alignment: .topTrailing) {
+                // Owned / locked badge — top right
+                if item.owned {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(Color.kLeaf).font(.system(size: 15))
+                        .padding(6)
+                } else if isLocked || missingPrereq {
+                    Image(systemName: "lock.fill")
+                        .foregroundColor(.gray).font(.system(size: 13))
+                        .padding(6)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                .padding(6)
+            }
+            .overlay(alignment: .topLeading) {
+                // Premium star badge — top left, always visible for premium items
+                if item.requiresPremium {
+                    ZStack {
+                        Circle()
+                            .fill(Color(red:0.95,green:0.75,blue:0.10))
+                            .shadow(color: Color(red:0.90,green:0.65,blue:0.0).opacity(0.55), radius: 4, x: 0, y: 2)
+                        Image(systemName: "star.fill")
+                            .foregroundColor(.white)
+                            .font(.system(size: 13, weight: .bold))
+                    }
+                    .frame(width: 26, height: 26)
+                    .padding(6)
+                }
             }
 
             Text(item.name)
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .multilineTextAlignment(.center).lineLimit(2)
-                .opacity(isLocked ? 0.45 : item.owned ? 0.65 : 1.0)
+                .opacity((isLocked || missingPrereq || premiumLocked) ? 0.45 : item.owned ? 0.65 : 1.0)
 
             // Bottom action row
             if item.owned {
-                Label("Owned", systemImage: "checkmark")
-                    .font(.system(size: 10, weight: .semibold, design: .rounded))
-                    .foregroundColor(Color.kLeaf)
+                if item.requiresPremium {
+                    HStack(spacing: 3) {
+                        Image(systemName: "star.fill").font(.system(size: 8))
+                            .foregroundColor(Color(red:0.95,green:0.75,blue:0.10))
+                        Text("Premium").font(.system(size: 10, weight: .bold, design: .rounded))
+                            .foregroundColor(Color(red:0.72,green:0.50,blue:0.0))
+                    }
+                    .padding(.horizontal, 8).padding(.vertical, 4)
+                    .background(Color(red:1.0,green:0.95,blue:0.75))
+                    .clipShape(Capsule())
+                } else {
+                    Label("Owned", systemImage: "checkmark")
+                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                        .foregroundColor(Color.kLeaf)
+                }
+            } else if premiumLocked {
+                HStack(spacing: 3) {
+                    Image(systemName: "star.fill").font(.system(size: 8))
+                    Text("Subscribe").font(.system(size: 10, weight: .bold, design: .rounded))
+                }
+                .foregroundColor(Color(red:0.72,green:0.50,blue:0.0))
+                .padding(.horizontal, 9).padding(.vertical, 4)
+                .background(Color(red:1.0,green:0.93,blue:0.70))
+                .clipShape(Capsule())
             } else if isLocked {
                 HStack(spacing: 3) {
                     Image(systemName: "lock.fill").font(.system(size: 8))
@@ -1103,27 +1449,39 @@ private struct AllStateShopCard: View {
                 .padding(.horizontal, 9).padding(.vertical, 4)
                 .background(Color.gray.opacity(0.12))
                 .clipShape(Capsule())
-            } else {
-                Button(action: onBuy) {
-                    HStack(spacing: 3) {
-                        Image(systemName: "dollarsign.circle.fill").font(.system(size: 10))
-                            .foregroundColor(canAfford ? Color(red:0.50,green:0.36,blue:0.0) : .secondary)
-                        Text("\(item.cost)").font(.system(size: 11, weight: .bold, design: .rounded))
-                            .foregroundColor(canAfford ? Color(red:0.50,green:0.36,blue:0.0) : .secondary)
-                    }
-                    .padding(.horizontal, 11).padding(.vertical, 5)
-                    .background(canAfford ? Color(red:0.99,green:0.95,blue:0.80) : Color(red:0.91,green:0.91,blue:0.91))
-                    .clipShape(Capsule())
+            } else if missingPrereq {
+                HStack(spacing: 3) {
+                    Image(systemName: "lock.fill").font(.system(size: 8))
+                    Text("Needs \(requiredName ?? "prerequisite")")
+                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                        .lineLimit(1).minimumScaleFactor(0.8)
                 }
-                .disabled(!canAfford)
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 9).padding(.vertical, 4)
+                .background(Color.gray.opacity(0.12))
+                .clipShape(Capsule())
+            } else {
+                // Price pill — purely visual now; the whole card is the tap target
+                HStack(spacing: 3) {
+                    Image(systemName: "dollarsign.circle.fill").font(.system(size: 10))
+                        .foregroundColor(canAfford ? Color(red:0.50,green:0.36,blue:0.0) : .secondary)
+                    Text("\(item.cost)").font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundColor(canAfford ? Color(red:0.50,green:0.36,blue:0.0) : .secondary)
+                }
+                .padding(.horizontal, 11).padding(.vertical, 5)
+                .background(canAfford ? Color(red:0.99,green:0.95,blue:0.80) : Color(red:0.91,green:0.91,blue:0.91))
+                .clipShape(Capsule())
             }
         }
         .padding(10).frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.white.opacity(item.owned || isLocked ? 0.75 : 1.0))
-                .shadow(color: .black.opacity(item.owned || isLocked ? 0.03 : 0.05), radius: 6, x: 0, y: 2)
+                .fill(Color.white.opacity(item.owned || isLocked || missingPrereq || premiumLocked ? 0.75 : 1.0))
+                .shadow(color: .black.opacity(item.owned || isLocked || missingPrereq || premiumLocked ? 0.03 : 0.05), radius: 6, x: 0, y: 2)
         )
+        // WHOLE CARD is the tap target — route every tap through onBuy
+        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .onTapGesture { onBuy() }
     }
 }
 
@@ -1150,18 +1508,14 @@ private struct ShopItemIllustration: View {
     var body: some View {
         ZStack {
             switch id {
-            case "candle":        CandleIllustration()
-            case "cozy_lamp":     LampIllustration()
-            case "cushion":       CushionIllustration()
-            case "bookshelf":     BookIllustration()
-            case "aquarium":      AquariumIllustration()
-            case "piano":         PianoIllustration()
-            case "rug":           RugIllustration()
-            case "hang_plant":    PlantIllustration()
-            case "fireplace":     FireplaceIllustration()
-            case "zen_garden":    ZenGardenIllustration()
-            case "star_mobile":   StarMobileIllustration()
-            case "royal_throne":  ThroneIllustration()
+            case "couch":      SofaIllustration()
+            case "candle":     CandleIllustration()
+            case "cushion":    CushionIllustration()
+            case "rug":        RugIllustration()
+            case "fireplace":  FireplaceIllustration()
+            case "side_table": SideTableIllustration()
+            case "cozy_lamp":  NightLampIllustration()
+            case "side_plant": TablePlantIllustration()
             default:
                 Image(systemName: icon)
                     .font(.system(size: 28, weight: .medium))
@@ -1173,66 +1527,218 @@ private struct ShopItemIllustration: View {
     }
 }
 
-private struct CandleIllustration: View {
-    @State private var flicker: CGFloat = 1.0
+private struct SofaIllustration: View {
     var body: some View {
         ZStack {
-            // Base
-            RoundedRectangle(cornerRadius: 4)
-                .fill(Color(red:0.96,green:0.94,blue:0.88))
-                .frame(width: 14, height: 24)
-            // Wick
-            Rectangle()
-                .fill(Color(red:0.40,green:0.32,blue:0.22))
-                .frame(width: 1.5, height: 6)
-                .offset(y: -15)
-            // Flame
+            // Shadow
             Ellipse()
-                .fill(LinearGradient(colors: [Color(red:1,green:0.85,blue:0.20), .orange],
-                                     startPoint: .top, endPoint: .bottom))
-                .frame(width: 7, height: 12 * flicker)
-                .offset(y: -22)
-            // Glow
-            Circle()
-                .fill(Color(red:1,green:0.90,blue:0.60).opacity(0.30))
-                .frame(width: 30, height: 30)
-                .offset(y: -18)
-                .blur(radius: 4)
-        }
-        .onAppear {
-            withAnimation(.easeInOut(duration: 0.4).repeatForever(autoreverses: true)) {
-                flicker = 0.8
+                .fill(Color.black.opacity(0.08))
+                .frame(width: 58, height: 6)
+                .offset(y: 18)
+            // Legs (four, spread wider)
+            ForEach([-24.0, -8.0, 8.0, 24.0] as [CGFloat], id: \.self) { lx in
+                RoundedRectangle(cornerRadius:1)
+                    .fill(Color(red:0.52,green:0.38,blue:0.22))
+                    .frame(width:3, height:5)
+                    .offset(x:lx, y:16)
+            }
+            // Seat (wider, lower)
+            RoundedRectangle(cornerRadius:5)
+                .fill(Color(red:0.68,green:0.56,blue:0.84))
+                .frame(width:58, height:9)
+                .offset(y:10)
+            // Backrest (much wider, flatter — reads as a couch)
+            RoundedRectangle(cornerRadius:6)
+                .fill(LinearGradient(
+                    colors:[Color(red:0.76,green:0.65,blue:0.90), Color(red:0.68,green:0.56,blue:0.84)],
+                    startPoint:.topLeading, endPoint:.bottomTrailing))
+                .frame(width:62, height:14)
+                .offset(y:-1)
+            // Two seat cushions (to clearly read as multi-seat couch)
+            HStack(spacing: 2) {
+                RoundedRectangle(cornerRadius:3)
+                    .fill(Color(red:0.80,green:0.70,blue:0.93))
+                    .frame(width:24, height:6)
+                RoundedRectangle(cornerRadius:3)
+                    .fill(Color(red:0.80,green:0.70,blue:0.93))
+                    .frame(width:24, height:6)
+            }
+            .offset(y: 8)
+            // Armrests (pushed to the outer edges of the wider couch)
+            ForEach([-28.0, 28.0] as [CGFloat], id: \.self) { ax in
+                RoundedRectangle(cornerRadius:4)
+                    .fill(Color(red:0.58,green:0.46,blue:0.75))
+                    .frame(width:7, height:14)
+                    .offset(x:ax, y:4)
             }
         }
     }
 }
 
-private struct LampIllustration: View {
+// Matches the in-room side table: oval wooden top with two legs and a lower shelf
+private struct SideTableIllustration: View {
     var body: some View {
         ZStack {
+            // Shadow
+            Ellipse()
+                .fill(Color.black.opacity(0.08))
+                .frame(width: 40, height: 5)
+                .offset(y: 20)
+            // Legs
+            ForEach([-14.0, 14.0] as [CGFloat], id: \.self) { lx in
+                Rectangle()
+                    .fill(Color(red:0.62,green:0.48,blue:0.30))
+                    .frame(width: 3, height: 22)
+                    .offset(x: lx, y: 6)
+            }
+            // Lower shelf
+            Ellipse()
+                .fill(Color(red:0.68,green:0.52,blue:0.34).opacity(0.75))
+                .frame(width: 30, height: 5)
+                .offset(y: 14)
+            // Top (oval wooden)
+            Ellipse()
+                .fill(LinearGradient(
+                    colors:[Color(red:0.78,green:0.60,blue:0.40), Color(red:0.62,green:0.46,blue:0.28)],
+                    startPoint:.top, endPoint:.bottom))
+                .frame(width: 42, height: 8)
+                .offset(y: -4)
+        }
+    }
+}
+
+// Matches the in-room night lamp: warm shade + short pole + capsule base
+private struct NightLampIllustration: View {
+    var body: some View {
+        ZStack {
+            // Warm glow
+            Circle()
+                .fill(RadialGradient(
+                    colors:[Color(red:1,green:0.92,blue:0.55).opacity(0.55), .clear],
+                    center:.center, startRadius:4, endRadius:22))
+                .frame(width: 44, height: 44)
+                .offset(y: -4)
+                .blur(radius: 3)
             // Base
             Capsule()
-                .fill(Color(red:0.78,green:0.63,blue:0.47))
-                .frame(width: 12, height: 6)
-                .offset(y: 22)
+                .fill(LinearGradient(
+                    colors:[Color(red:0.78,green:0.62,blue:0.44), Color(red:0.60,green:0.46,blue:0.30)],
+                    startPoint:.top, endPoint:.bottom))
+                .frame(width: 22, height: 5)
+                .offset(y: 18)
             // Pole
             Rectangle()
-                .fill(Color(red:0.78,green:0.63,blue:0.47))
-                .frame(width: 3, height: 24)
+                .fill(Color(red:0.72,green:0.56,blue:0.38))
+                .frame(width: 2, height: 18)
+                .offset(y: 6)
             // Shade
+            RoundedRectangle(cornerRadius: 4)
+                .fill(LinearGradient(
+                    colors:[Color(red:1.00,green:0.96,blue:0.78), Color(red:0.96,green:0.86,blue:0.55)],
+                    startPoint:.top, endPoint:.bottom))
+                .frame(width: 30, height: 16)
+                .offset(y: -8)
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(Color(red:0.70,green:0.54,blue:0.30), lineWidth: 1)
+                .frame(width: 30, height: 16)
+                .offset(y: -8)
+        }
+    }
+}
+
+// Matches the in-room table plant: terracotta pot + 3 leaves
+private struct TablePlantIllustration: View {
+    // All layout relative to ZStack center (0,0).
+    // Pot:  top=-1  bottom=+17  (height 18, offset +8)
+    // Rim:  top=-6  bottom=-1   (height 5,  offset -3.5) — sits flush on pot top
+    // Soil: center=-4           (inside rim)
+    // Leaves: center=-18        (grow up from rim)
+    var body: some View {
+        ZStack {
+            // Leaves — three angled ellipses growing upward
+            ForEach([-1,0,1] as [CGFloat], id:\.self) { s in
+                Ellipse()
+                    .fill(Color(red:0.26,green:0.62,blue:0.26))
+                    .frame(width: 11, height: 22)
+                    .rotationEffect(.degrees(Double(s)*22))
+                    .offset(x: s*6, y: -18)
+            }
+            // Pot rim — flush on top of pot
+            RoundedRectangle(cornerRadius: 2)
+                .fill(Color(red:0.88,green:0.58,blue:0.40))
+                .frame(width: 32, height: 5)
+                .offset(y: -3)
+            // Soil — inside rim
+            Ellipse()
+                .fill(Color(red:0.32,green:0.22,blue:0.14))
+                .frame(width: 22, height: 3)
+                .offset(y: -2)
+            // Pot body — non-negative coords (0,0)→(28,18), centered via offset
             Path { p in
-                p.move(to: CGPoint(x: -16, y: -8))
-                p.addLine(to: CGPoint(x: 16, y: -8))
-                p.addLine(to: CGPoint(x: 10, y: -18))
-                p.addLine(to: CGPoint(x: -10, y: -18))
+                p.move(to:    CGPoint(x: 0,    y: 0))
+                p.addLine(to: CGPoint(x: 28,   y: 0))
+                p.addLine(to: CGPoint(x: 23.5, y: 18))
+                p.addLine(to: CGPoint(x: 4.5,  y: 18))
                 p.closeSubpath()
             }
-            .fill(Color(red:0.98,green:0.90,blue:0.72))
-            // Glow
+            .fill(LinearGradient(
+                colors:[Color(red:0.82,green:0.52,blue:0.36),
+                        Color(red:0.64,green:0.40,blue:0.26)],
+                startPoint:.top, endPoint:.bottom))
+            .frame(width: 28, height: 18)
+            .offset(y: 8)   // bottom lands at +17, top lands at -1 → aligns with rim bottom
+        }
+    }
+}
+
+private struct CandleIllustration: View {
+    @State private var flicker: CGFloat = 1.0
+    var body: some View {
+        ZStack {
+            // Outer glow (visible halo around flame)
             Circle()
-                .fill(Color(red:1,green:0.95,blue:0.75).opacity(0.4))
-                .frame(width: 40, height: 40)
+                .fill(Color(red:1,green:0.82,blue:0.40).opacity(0.45))
+                .frame(width: 38, height: 38)
+                .offset(y: -10)
                 .blur(radius: 6)
+            // THREE candles for a clearly visible "Candle Set"
+            ForEach([-14, 0, 14] as [CGFloat], id: \.self) { xOff in
+                ZStack {
+                    // Candle body — tall, pale cream with stroke for definition
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(LinearGradient(
+                            colors:[Color(red:1.00,green:0.98,blue:0.92), Color(red:0.92,green:0.88,blue:0.78)],
+                            startPoint:.top, endPoint:.bottom))
+                        .frame(width: 11, height: xOff == 0 ? 28 : 22)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 3)
+                                .stroke(Color(red:0.68,green:0.58,blue:0.40), lineWidth: 0.8)
+                        )
+                        .offset(x: xOff, y: xOff == 0 ? 0 : 3)
+                    // Wick (dark)
+                    Rectangle()
+                        .fill(Color(red:0.24,green:0.18,blue:0.12))
+                        .frame(width: 1.4, height: 4)
+                        .offset(x: xOff, y: xOff == 0 ? -16 : -10)
+                    // Flame — bright yellow-orange, clearly visible
+                    Ellipse()
+                        .fill(LinearGradient(
+                            colors:[Color(red:1,green:0.95,blue:0.40), Color(red:1,green:0.55,blue:0.05)],
+                            startPoint:.top, endPoint:.bottom))
+                        .frame(width: 6.5, height: 11 * flicker)
+                        .offset(x: xOff, y: xOff == 0 ? -24 : -18)
+                    // Inner hot flame core (lighter)
+                    Ellipse()
+                        .fill(Color(red:1,green:1,blue:0.80).opacity(0.85))
+                        .frame(width: 3, height: 5 * flicker)
+                        .offset(x: xOff, y: xOff == 0 ? -23 : -17)
+                }
+            }
+        }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 0.4).repeatForever(autoreverses: true)) {
+                flicker = 0.8
+            }
         }
     }
 }
@@ -1256,203 +1762,34 @@ private struct CushionIllustration: View {
     }
 }
 
-private struct BookIllustration: View {
-    var body: some View {
-        ZStack {
-            ForEach(0..<4, id: \.self) { i in
-                let colors: [Color] = [
-                    Color(red:0.36,green:0.58,blue:0.84),
-                    Color(red:0.84,green:0.36,blue:0.36),
-                    Color(red:0.36,green:0.72,blue:0.42),
-                    Color(red:0.92,green:0.78,blue:0.22)
-                ]
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(colors[i])
-                    .frame(width: 9, height: 28 + CGFloat(i%2) * 4)
-                    .offset(x: CGFloat(i-1) * 10 - 5)
-            }
-        }
-    }
-}
-
-private struct AquariumIllustration: View {
-    @State private var fishX: CGFloat = -14
-    @State private var fishX2: CGFloat = 10
-    @State private var bubbleY: CGFloat = 0
-    var body: some View {
-        ZStack {
-            // Tank body with gradient water
-            RoundedRectangle(cornerRadius: 6)
-                .fill(LinearGradient(
-                    colors: [Color(red:0.72,green:0.90,blue:0.98), Color(red:0.54,green:0.78,blue:0.95)],
-                    startPoint: .top, endPoint: .bottom))
-                .frame(width: 46, height: 32)
-            // Tank border
-            RoundedRectangle(cornerRadius: 6)
-                .strokeBorder(Color(red:0.45,green:0.68,blue:0.82), lineWidth: 2)
-                .frame(width: 46, height: 32)
-            // Gravel at bottom
-            RoundedRectangle(cornerRadius: 3)
-                .fill(LinearGradient(
-                    colors: [Color(red:0.72,green:0.62,blue:0.48), Color(red:0.60,green:0.50,blue:0.36)],
-                    startPoint: .leading, endPoint: .trailing))
-                .frame(width: 42, height: 6)
-                .offset(y: 12)
-            // Small pebbles on gravel
-            ForEach([-12,-4,6,14] as [CGFloat], id:\.self) { px in
-                Circle()
-                    .fill(Color(red:0.55,green:0.48,blue:0.38))
-                    .frame(width: 3.5)
-                    .offset(x: px, y: 11)
-            }
-            // Seaweed left
-            Path { p in
-                p.move(to: CGPoint(x: -16, y: 10))
-                p.addCurve(to: CGPoint(x: -16, y: -2),
-                           control1: CGPoint(x: -20, y: 4),
-                           control2: CGPoint(x: -12, y: 2))
-            }
-            .stroke(Color(red:0.28,green:0.62,blue:0.32), lineWidth: 2.5)
-            // Seaweed right
-            Path { p in
-                p.move(to: CGPoint(x: 14, y: 10))
-                p.addCurve(to: CGPoint(x: 14, y: -4),
-                           control1: CGPoint(x: 10, y: 4),
-                           control2: CGPoint(x: 18, y: 2))
-            }
-            .stroke(Color(red:0.32,green:0.68,blue:0.28), lineWidth: 2)
-            // Orange clownfish (main)
-            ZStack {
-                Ellipse()
-                    .fill(Color(red:0.98,green:0.52,blue:0.15))
-                    .frame(width: 11, height: 7)
-                // White stripes
-                ForEach([-2, 2] as [CGFloat], id:\.self) { sx in
-                    Rectangle()
-                        .fill(Color.white.opacity(0.85))
-                        .frame(width: 1.5, height: 6)
-                        .offset(x: sx)
-                }
-                // Tail
-                Path { p in
-                    p.move(to: CGPoint(x: -5, y: 0))
-                    p.addLine(to: CGPoint(x: -9, y: -3))
-                    p.addLine(to: CGPoint(x: -9, y: 3))
-                    p.closeSubpath()
-                }
-                .fill(Color(red:0.98,green:0.52,blue:0.15))
-                // Eye
-                Circle().fill(Color.white).frame(width: 2.5).offset(x: 4, y: -1)
-            }
-            .offset(x: fishX, y: 0)
-            // Small blue fish
-            ZStack {
-                Ellipse()
-                    .fill(Color(red:0.38,green:0.60,blue:0.92))
-                    .frame(width: 7, height: 4.5)
-                Circle().fill(Color.white).frame(width: 1.5).offset(x: 2.5, y: -0.5)
-            }
-            .offset(x: fishX2, y: -5)
-            // Bubbles
-            ForEach([(-14,-8),(-13,-12),(-12,-4)] as [(CGFloat,CGFloat)], id:\.0) { bx, by in
-                Circle()
-                    .stroke(Color.white.opacity(0.70), lineWidth: 0.8)
-                    .frame(width: 3)
-                    .offset(x: bx, y: by + bubbleY)
-            }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 6))
-        .onAppear {
-            withAnimation(.easeInOut(duration: 2.2).repeatForever(autoreverses: true)) { fishX = 14 }
-            withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true).delay(0.4)) { fishX2 = -10 }
-            withAnimation(.linear(duration: 2.0).repeatForever(autoreverses: false)) { bubbleY = -18 }
-        }
-    }
-}
-
-private struct PianoIllustration: View {
-    var body: some View {
-        ZStack {
-            // Body
-            RoundedRectangle(cornerRadius: 4)
-                .fill(Color(red:0.15,green:0.12,blue:0.10))
-                .frame(width: 46, height: 24)
-            // Keys (white)
-            HStack(spacing: 1) {
-                ForEach(0..<7, id: \.self) { _ in
-                    RoundedRectangle(cornerRadius: 1)
-                        .fill(Color.white)
-                        .frame(width: 5, height: 14)
-                }
-            }
-            .offset(y: 4)
-            // Black keys
-            HStack(spacing: 4) {
-                ForEach([0,1,3,4,5] as [Int], id: \.self) { i in
-                    RoundedRectangle(cornerRadius: 1)
-                        .fill(Color(red:0.15,green:0.12,blue:0.10))
-                        .frame(width: 3.5, height: 9)
-                }
-            }
-            .offset(y: 0)
-        }
-    }
-}
 
 private struct RugIllustration: View {
+    // Two-tone woven rug: half pink, half blue (matches the home-page rug)
     var body: some View {
         ZStack {
+            // Full oval base (pink)
             Ellipse()
-                .fill(Color(red:0.82,green:0.28,blue:0.30))
-                .frame(width:44, height:28)
+                .fill(Color(red:0.92,green:0.58,blue:0.66))
+                .frame(width: 44, height: 26)
+            // Right half (blue) — clipped to the same ellipse so edges stay round
             Ellipse()
-                .fill(Color(red:0.96,green:0.92,blue:0.84))
-                .frame(width:34, height:20)
+                .fill(Color(red:0.46,green:0.66,blue:0.92))
+                .frame(width: 44, height: 26)
+                .mask(
+                    HStack(spacing: 0) {
+                        Color.clear
+                        Color.black
+                    }
+                    .frame(width: 44, height: 26)
+                )
+            // Center divider stripe
+            Rectangle()
+                .fill(Color.white.opacity(0.55))
+                .frame(width: 1.2, height: 22)
+            // Subtle outer rim
             Ellipse()
-                .fill(Color(red:0.28,green:0.46,blue:0.82))
-                .frame(width:24, height:13)
-            Ellipse()
-                .fill(Color(red:0.96,green:0.92,blue:0.84))
-                .frame(width:14, height:7)
-            Circle()
-                .fill(Color(red:0.82,green:0.28,blue:0.30))
-                .frame(width:5, height:5)
-        }
-    }
-}
-
-private struct PlantIllustration: View {
-    var body: some View {
-        ZStack {
-            // Pot body
-            Path { p in
-                p.move(to: CGPoint(x:-9, y:12))
-                p.addLine(to: CGPoint(x:9, y:12))
-                p.addLine(to: CGPoint(x:7, y:0))
-                p.addLine(to: CGPoint(x:-7, y:0))
-                p.closeSubpath()
-            }
-            .fill(Color(red:0.72,green:0.52,blue:0.36))
-            // Rim
-            RoundedRectangle(cornerRadius:2)
-                .fill(Color(red:0.58,green:0.40,blue:0.24))
-                .frame(width:20, height:5)
-                .offset(y:0)
-            // Leaves
-            Ellipse()
-                .fill(Color(red:0.26,green:0.62,blue:0.26))
-                .frame(width:12, height:22)
-                .rotationEffect(.degrees(-28))
-                .offset(x:-10, y:-12)
-            Ellipse()
-                .fill(Color(red:0.32,green:0.70,blue:0.32))
-                .frame(width:12, height:22)
-                .rotationEffect(.degrees(28))
-                .offset(x:10, y:-12)
-            Ellipse()
-                .fill(Color(red:0.28,green:0.66,blue:0.28))
-                .frame(width:12, height:22)
-                .offset(x:0, y:-16)
+                .stroke(Color(red:0.62,green:0.46,blue:0.62).opacity(0.35), lineWidth: 1)
+                .frame(width: 44, height: 26)
         }
     }
 }
@@ -1505,173 +1842,12 @@ private struct FireplaceIllustration: View {
     }
 }
 
-private struct ZenGardenIllustration: View {
-    var body: some View {
-        ZStack {
-            // Tray with wood grain look
-            RoundedRectangle(cornerRadius: 5)
-                .fill(LinearGradient(
-                    colors: [Color(red:0.96,green:0.91,blue:0.78), Color(red:0.90,green:0.84,blue:0.68)],
-                    startPoint: .topLeading, endPoint: .bottomTrailing))
-                .frame(width: 46, height: 30)
-            RoundedRectangle(cornerRadius: 5)
-                .strokeBorder(Color(red:0.68,green:0.58,blue:0.40), lineWidth: 1.5)
-                .frame(width: 46, height: 30)
-            // Sand rake lines (curved for zen look)
-            ForEach(0..<5, id: \.self) { i in
-                Path { p in
-                    let y = CGFloat(i - 2) * 4.2
-                    p.move(to: CGPoint(x: -16, y: y))
-                    p.addQuadCurve(to: CGPoint(x: 16, y: y),
-                                   control: CGPoint(x: 0, y: y + (i%2==0 ? 1.5 : -1.5)))
-                }
-                .stroke(Color(red:0.72,green:0.64,blue:0.48).opacity(0.65), lineWidth: 1)
-            }
-            // Larger decorative rock (left)
-            ZStack {
-                Ellipse()
-                    .fill(LinearGradient(colors:[Color(red:0.68,green:0.66,blue:0.64), Color(red:0.54,green:0.52,blue:0.50)], startPoint:.topLeading, endPoint:.bottomTrailing))
-                    .frame(width: 10, height: 7)
-                // Rock highlight
-                Ellipse()
-                    .fill(Color.white.opacity(0.30))
-                    .frame(width: 4, height: 2.5)
-                    .offset(x: -1, y: -1)
-            }
-            .offset(x: -10, y: 4)
-            // Medium rock (center-right)
-            ZStack {
-                Ellipse()
-                    .fill(LinearGradient(colors:[Color(red:0.72,green:0.70,blue:0.68), Color(red:0.56,green:0.54,blue:0.52)], startPoint:.topLeading, endPoint:.bottomTrailing))
-                    .frame(width: 7, height: 5)
-                Ellipse()
-                    .fill(Color.white.opacity(0.25))
-                    .frame(width: 3, height: 2)
-                    .offset(x: -0.5, y: -0.5)
-            }
-            .offset(x: 6, y: -2)
-            // Small rock
-            Circle()
-                .fill(Color(red:0.64,green:0.62,blue:0.60))
-                .frame(width: 4.5)
-                .offset(x: 14, y: 5)
-            // Tiny bamboo shoots (right side)
-            ForEach([10, 14] as [CGFloat], id:\.self) { bx in
-                RoundedRectangle(cornerRadius: 1)
-                    .fill(Color(red:0.36,green:0.60,blue:0.28))
-                    .frame(width: 2, height: 8)
-                    .offset(x: bx, y: -9)
-            }
-        }
-    }
-}
-
-private struct StarMobileIllustration: View {
-    var body: some View {
-        ZStack {
-            // Horizontal bar
-            RoundedRectangle(cornerRadius:2)
-                .fill(Color(red:0.62,green:0.50,blue:0.34))
-                .frame(width:42, height:4)
-                .offset(y:-10)
-            // Threads + stars at 4 positions
-            ForEach([-16, -5, 6, 17] as [CGFloat], id:\.self) { x in
-                Rectangle()
-                    .fill(Color(red:0.62,green:0.50,blue:0.34).opacity(0.65))
-                    .frame(width:1.5, height:12)
-                    .offset(x:x, y:0)
-                FourPointStar()
-                    .fill(Color.kGold)
-                    .frame(width:10, height:10)
-                    .offset(x:x, y:10)
-            }
-        }
-    }
-}
-
-private struct ThroneIllustration: View {
-    @State private var glow: CGFloat = 0.5
-    var body: some View {
-        ZStack {
-            // Glow background
-            Circle()
-                .fill(RadialGradient(
-                    colors: [Color.kGold.opacity(glow * 0.5), .clear],
-                    center: .center, startRadius: 2, endRadius: 28))
-                .frame(width: 56, height: 56)
-            // Throne legs
-            ForEach([-12, 12] as [CGFloat], id:\.self) { lx in
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color(red:0.62,green:0.38,blue:0.08))
-                    .frame(width: 5, height: 8)
-                    .offset(x: lx, y: 17)
-            }
-            // Seat cushion
-            RoundedRectangle(cornerRadius: 5)
-                .fill(LinearGradient(colors:[Color(red:0.62,green:0.34,blue:0.85),Color(red:0.44,green:0.20,blue:0.68)], startPoint:.top, endPoint:.bottom))
-                .frame(width: 32, height: 9)
-                .offset(y: 9)
-            // Seat gold trim
-            RoundedRectangle(cornerRadius: 5)
-                .strokeBorder(Color.kGold, lineWidth: 1.2)
-                .frame(width: 32, height: 9)
-                .offset(y: 9)
-            // Armrests
-            ForEach([-17, 17] as [CGFloat], id:\.self) { ax in
-                ZStack {
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(Color(red:0.54,green:0.28,blue:0.78))
-                        .frame(width: 5, height: 14)
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(Color.kGold.opacity(0.6))
-                        .frame(width: 5, height: 2)
-                        .offset(y: -6)
-                }
-                .offset(x: ax, y: 5)
-            }
-            // Backrest
-            RoundedRectangle(cornerRadius: 6)
-                .fill(LinearGradient(colors:[Color(red:0.66,green:0.38,blue:0.92),Color(red:0.48,green:0.24,blue:0.75)], startPoint:.topLeading, endPoint:.bottomTrailing))
-                .frame(width: 30, height: 24)
-                .offset(y: -7)
-            // Backrest border
-            RoundedRectangle(cornerRadius: 6)
-                .strokeBorder(Color.kGold.opacity(0.8), lineWidth: 1.5)
-                .frame(width: 30, height: 24)
-                .offset(y: -7)
-            // Diamond gems on backrest
-            ForEach([(-6, -10), (6, -10), (0, -6)] as [(CGFloat, CGFloat)], id:\.0) { gx, gy in
-                Circle()
-                    .fill(LinearGradient(colors:[Color(red:0.72,green:0.92,blue:1.0),Color(red:0.30,green:0.68,blue:0.98)], startPoint:.topLeading, endPoint:.bottomTrailing))
-                    .frame(width: 4, height: 4)
-                    .offset(x: gx, y: gy)
-            }
-            // Crown on top
-            Path { p in
-                let pts: [(CGFloat,CGFloat)] = [(-11,0),(-11,-7),(-7,-3),(-2,-9),(2,-9),(7,-3),(11,-7),(11,0)]
-                p.move(to: CGPoint(x:pts[0].0, y:pts[0].1))
-                for pt in pts.dropFirst() { p.addLine(to: CGPoint(x:pt.0, y:pt.1)) }
-                p.closeSubpath()
-            }
-            .fill(LinearGradient(colors:[Color(red:1,green:0.88,blue:0.30), Color.kGold], startPoint:.top, endPoint:.bottom))
-            .offset(y: -21)
-            // Crown jewel
-            Circle()
-                .fill(Color(red:0.95,green:0.30,blue:0.30))
-                .frame(width: 4)
-                .offset(y: -27)
-        }
-        .onAppear {
-            withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) { glow = 1.0 }
-        }
-    }
-}
-
 // MARK: ── Progress Tab ────────────────────────────────────────────────────
 struct ProgressTabView: View {
     let vm: KoalaHomeViewModel
     var onViewPremium: () -> Void = {}
     @State private var showPremiumAlert = false
+    private var isPremium: Bool { PremiumStatus.shared.isSubscribed }
 
     private var currentMonthDays: [Int] {
         let cal = Calendar.current
@@ -1845,53 +2021,44 @@ struct ProgressTabView: View {
                 )
                 .padding(.horizontal, 14)
 
-                // Premium-locked analytics
+                // Detailed analytics — UNLOCKED when subscribed
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
                         Label("Detailed Analytics", systemImage: "chart.bar.xaxis")
                             .font(.system(size: 15, weight: .bold, design: .rounded))
                         Spacer()
                         HStack(spacing: 3) {
-                            Image(systemName: "crown.fill")
+                            Image(systemName: isPremium ? "checkmark.seal.fill" : "crown.fill")
                                 .font(.system(size: 10))
-                            Text("Premium")
+                            Text(isPremium ? "Unlocked" : "Premium")
                                 .font(.system(size: 11, weight: .bold, design: .rounded))
                         }
                         .foregroundColor(.white)
                         .padding(.horizontal, 10).padding(.vertical, 4)
-                        .background(Color(red:0.52,green:0.34,blue:0.80))
+                        .background(isPremium ? Color.kLeaf : Color(red:0.52,green:0.34,blue:0.80))
                         .clipShape(Capsule())
                     }
 
-                    // Blurred mock chart
-                    VStack(spacing: 8) {
-                        MockBarChart()
-                            .frame(height: 80)
-                        HStack {
-                            ForEach(["Mon","Tue","Wed","Thu","Fri","Sat","Sun"], id: \.self) { d in
-                                Text(d).font(.system(size: 9, design: .rounded))
-                                    .foregroundColor(.secondary)
-                                    .frame(maxWidth: .infinity)
+                    // Full analytics content — blurred + locked unless premium
+                    PremiumAnalyticsContent(vm: vm)
+                        .blur(radius: isPremium ? 0 : 14)
+                        .overlay(
+                            Group {
+                                if !isPremium {
+                                    Button(action: { showPremiumAlert = true }) {
+                                        HStack(spacing: 6) {
+                                            Image(systemName: "lock.fill")
+                                            Text("Unlock with Premium")
+                                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                        }
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 20).padding(.vertical, 10)
+                                        .background(Color(red:0.52,green:0.34,blue:0.80))
+                                        .clipShape(Capsule())
+                                    }
+                                }
                             }
-                        }
-                        Text("App breakdown: Social 42% · Entertainment 28% · Other 30%")
-                            .font(.system(size: 11, design: .rounded))
-                            .foregroundColor(.secondary)
-                    }
-                    .blur(radius: 5)
-                    .overlay(
-                        Button(action: { showPremiumAlert = true }) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "lock.fill")
-                                Text("Unlock with Premium")
-                                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                            }
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 20).padding(.vertical, 10)
-                            .background(Color(red:0.52,green:0.34,blue:0.80))
-                            .clipShape(Capsule())
-                        }
-                    )
+                        )
                 }
                 .padding(16)
                 .background(
@@ -1912,18 +2079,181 @@ struct ProgressTabView: View {
     }
 }
 
-private struct MockBarChart: View {
-    private let heights: [CGFloat] = [0.55, 0.72, 0.48, 0.80, 0.65, 0.90, 0.42]
+// MARK: ── Premium Analytics Content ─────────────────────────────────────────
+private struct PremiumAnalyticsContent: View {
+    let vm: KoalaHomeViewModel
+
+    // Last 7 days oldest→newest, with their phone-minutes (nil = no check-in)
+    private var last7: [(label: String, minutes: Int?)] {
+        let cal = Calendar.current
+        let today = cal.ordinality(of: .day, in: .year, for: Date()) ?? 1
+        let dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]
+        return (0..<7).reversed().map { offset -> (String, Int?) in
+            let doy = today - offset
+            let date = cal.date(byAdding: .day, value: -offset, to: Date()) ?? Date()
+            let name = dayNames[cal.component(.weekday, from: date) - 1]
+            return (name, vm.checkInMinutes[doy])
+        }
+    }
+
+    private var goalMinutes: Int { vm.goalHours * 60 + vm.goalMinutes }
+
+    private func fmt(_ mins: Int) -> String {
+        let h = mins / 60; let m = mins % 60
+        return h > 0 ? "\(h)h \(m)m" : "\(m)m"
+    }
+
+    // Weekly averages (only days that have check-ins)
+    private func weekAvg(daysAgo startOffset: Int) -> Int? {
+        let cal = Calendar.current
+        let today = cal.ordinality(of: .day, in: .year, for: Date()) ?? 1
+        let vals = (startOffset..<startOffset+7).compactMap { vm.checkInMinutes[today - $0] }
+        guard !vals.isEmpty else { return nil }
+        return vals.reduce(0,+) / vals.count
+    }
+
+    private var thisWeekAvg: Int? { weekAvg(daysAgo: 0) }
+    private var lastWeekAvg: Int? { weekAvg(daysAgo: 7) }
+
+    private var insightText: String {
+        guard let tw = thisWeekAvg else {
+            return "Check in daily to start seeing your weekly insights!"
+        }
+        let thisStr = fmt(tw)
+        if let lw = lastWeekAvg {
+            let diff = tw - lw
+            let trend = diff < -5 ? "Way to go! 🎉" : diff > 5 ? "Try to cut back a bit." : "Keep it up! 👍"
+            return "This week you're averaging \(thisStr) compared to last week's \(fmt(lw)). \(trend)"
+        }
+        return "This week you're averaging \(thisStr) per day. Keep going!"
+    }
+
     var body: some View {
-        HStack(alignment: .bottom, spacing: 6) {
-            ForEach(0..<7, id: \.self) { i in
+        VStack(alignment: .leading, spacing: 14) {
+
+            // ── Bar chart ─────────────────────────────────────────────
+            VStack(alignment: .leading, spacing: 6) {
+                Text("SCREEN TIME VS GOAL")
+                    .font(.system(size: 10, weight: .semibold, design: .rounded))
+                    .foregroundColor(.secondary).tracking(1.0)
+
                 GeometryReader { g in
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color(red:0.52,green:0.34,blue:0.80).opacity(0.60))
-                        .frame(height: g.size.height * heights[i])
-                        .frame(maxHeight: .infinity, alignment: .bottom)
+                    let maxMinutes = max(goalMinutes * 2, (last7.compactMap(\.minutes).max() ?? goalMinutes) + 30)
+                    let barW = (g.size.width - 6 * CGFloat(last7.count - 1)) / CGFloat(last7.count)
+                    let chartH = g.size.height - 14  // leave room for day labels below
+                    let goalY  = chartH - chartH * CGFloat(goalMinutes) / CGFloat(maxMinutes)
+
+                    ZStack(alignment: .bottomLeading) {
+                        // Goal line
+                        Path { p in
+                            p.move(to: CGPoint(x: 0,           y: goalY))
+                            p.addLine(to: CGPoint(x: g.size.width, y: goalY))
+                        }
+                        .stroke(Color(red:0.90,green:0.34,blue:0.24).opacity(0.70),
+                                style: StrokeStyle(lineWidth: 1.2, dash: [4, 3]))
+
+                        // Bars + day labels
+                        ForEach(0..<last7.count, id: \.self) { i in
+                            let item = last7[i]
+                            let x = CGFloat(i) * (barW + 6)
+                            let mins = item.minutes ?? 0
+                            let barH = mins > 0 ? chartH * CGFloat(mins) / CGFloat(maxMinutes) : 2
+                            let overGoal = mins > goalMinutes
+
+                            // Bar
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(mins == 0
+                                      ? Color(red:0.88,green:0.88,blue:0.92)
+                                      : overGoal
+                                        ? Color(red:0.90,green:0.34,blue:0.24).opacity(0.75)
+                                        : Color(red:0.52,green:0.34,blue:0.80).opacity(0.75))
+                                .frame(width: barW, height: max(barH, 2))
+                                .position(x: x + barW/2,
+                                          y: chartH - barH/2)
+
+                            // Day label
+                            Text(item.label)
+                                .font(.system(size: 9, design: .rounded))
+                                .foregroundColor(.secondary)
+                                .frame(width: barW)
+                                .position(x: x + barW/2, y: chartH + 9)
+                        }
+
+                        // Goal label
+                        Text("Goal")
+                            .font(.system(size: 8, weight: .semibold, design: .rounded))
+                            .foregroundColor(Color(red:0.90,green:0.34,blue:0.24).opacity(0.80))
+                            .position(x: g.size.width - 16, y: goalY - 7)
+                    }
+                }
+                .frame(height: 110)
+
+                // Legend
+                HStack(spacing: 12) {
+                    HStack(spacing: 4) {
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Color(red:0.52,green:0.34,blue:0.80).opacity(0.75))
+                            .frame(width: 10, height: 10)
+                        Text("Under goal").font(.system(size: 9, design: .rounded)).foregroundColor(.secondary)
+                    }
+                    HStack(spacing: 4) {
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Color(red:0.90,green:0.34,blue:0.24).opacity(0.75))
+                            .frame(width: 10, height: 10)
+                        Text("Over goal").font(.system(size: 9, design: .rounded)).foregroundColor(.secondary)
+                    }
                 }
             }
+
+            Divider()
+
+            // ── Recent check-ins list ─────────────────────────────────
+            VStack(alignment: .leading, spacing: 4) {
+                Text("RECENT CHECK-INS")
+                    .font(.system(size: 10, weight: .semibold, design: .rounded))
+                    .foregroundColor(.secondary).tracking(1.0)
+                ForEach(Array(last7.reversed().prefix(5).enumerated()), id: \.offset) { _, item in
+                    HStack {
+                        Circle()
+                            .fill(item.minutes != nil ? Color.kLeaf : Color(red:0.88,green:0.88,blue:0.92))
+                            .frame(width: 7, height: 7)
+                        Text(item.label)
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .frame(width: 30, alignment: .leading)
+                        if let m = item.minutes {
+                            Text(fmt(m))
+                                .font(.system(size: 12, design: .rounded))
+                            Spacer()
+                            let over = m > goalMinutes
+                            Text(over ? "+\(fmt(m - goalMinutes)) over" : "✓ under goal")
+                                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                                .foregroundColor(over ? Color(red:0.85,green:0.28,blue:0.18) : Color.kLeaf)
+                        } else {
+                            Text("No check-in")
+                                .font(.system(size: 12, design: .rounded))
+                                .foregroundColor(.secondary)
+                            Spacer()
+                        }
+                    }
+                    .padding(.vertical, 3)
+                }
+            }
+
+            Divider()
+
+            // ── Insight ───────────────────────────────────────────────
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "lightbulb.fill")
+                    .foregroundColor(Color.kGold)
+                    .font(.system(size: 16))
+                Text(insightText)
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundColor(Color(red:0.25,green:0.18,blue:0.10))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(10)
+            .background(Color(red:0.99,green:0.97,blue:0.84))
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
     }
 }
@@ -1976,18 +2306,27 @@ struct PremiumTabView: View {
 
                 // Features
                 VStack(spacing: 10) {
-                    PremiumRow(icon: "chart.bar.xaxis",       color: Color(red:0.52,green:0.34,blue:0.80), title: "Detailed Analytics",   desc: "Full screen time breakdown by app")
+                    PremiumRow(icon: "chart.bar.xaxis",       color: Color(red:0.52,green:0.34,blue:0.80), title: "Detailed Analytics",   desc: "Deep insight on your progress")
                     PremiumRow(icon: "bolt.fill",             color: Color.kTabSel,                        title: "1.5× Coin Earn Rate",  desc: "Earn coins & XP faster")
                     PremiumRow(icon: "flame.fill",            color: .orange,                              title: "Streak Flexibility",   desc: "Pause instead of breaking")
                     PremiumRow(icon: "star.fill",             color: Color.kGold,                          title: "Exclusive Shop Items", desc: "Premium room décor unlocked")
-                    PremiumRow(icon: "paintbrush.fill",       color: Color(red:0.36,green:0.68,blue:0.42), title: "Koala Accessories",    desc: "Hats, outfits & animations")
                     PremiumRow(icon: "checkmark.shield.fill", color: Color(red:0.27,green:0.67,blue:0.29), title: "Cancel Anytime",       desc: "Manage in App Store Settings")
                 }
                 .padding(.horizontal, 14)
 
-                // Subscribe button — triggers Apple payment sheet
+                // Subscribe button — triggers Apple payment sheet or opens subscription settings
                 Button(action: {
-                    Task { await startPurchase() }
+                    if purchaseSuccess {
+                        // Open App Store subscription management screen
+                        Task {
+                            guard let windowScene = UIApplication.shared.connectedScenes
+                                .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene
+                            else { return }
+                            try? await AppStore.showManageSubscriptions(in: windowScene)
+                        }
+                    } else {
+                        Task { await startPurchase() }
+                    }
                 }) {
                     HStack(spacing: 8) {
                         if isPurchasing {
@@ -1998,7 +2337,7 @@ struct PremiumTabView: View {
                             Image(systemName: purchaseSuccess ? "checkmark.circle.fill" : "crown.fill")
                                 .font(.system(size: 16, weight: .bold))
                         }
-                        Text(isPurchasing ? "Loading…" : purchaseSuccess ? "Subscribed!" : "Start Free Trial")
+                        Text(isPurchasing ? "Loading…" : purchaseSuccess ? "Manage Subscription" : "Subscribe Now")
                             .font(.system(size: 17, weight: .bold, design: .rounded))
                     }
                     .foregroundColor(.white)
@@ -2015,7 +2354,7 @@ struct PremiumTabView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     .shadow(color: Color.kBtnGold.opacity(0.40), radius: 10, x: 0, y: 4)
                 }
-                .disabled(isPurchasing || purchaseSuccess)
+                .disabled(isPurchasing)
                 .padding(.horizontal, 20)
 
                 Text("Cancel anytime. Billed monthly via App Store.")
@@ -2029,6 +2368,20 @@ struct PremiumTabView: View {
         .alert("Purchase Error", isPresented: $showError) {
             Button("OK", role: .cancel) {}
         } message: { Text(errorMessage) }
+        .onAppear {
+            // Reflect any existing subscription in the button state
+            if PremiumStatus.shared.isSubscribed { purchaseSuccess = true }
+            // Refresh entitlements from StoreKit on appear
+            Task { await refreshEntitlements() }
+        }
+    }
+
+    @MainActor
+    private func refreshEntitlements() async {
+        // Delegate to the shared function (checks entitlements + willAutoRenew)
+        await refreshPremiumStatus()
+        // Mirror the global state into the local button state
+        purchaseSuccess = PremiumStatus.shared.isSubscribed
     }
 
     @MainActor
@@ -2043,10 +2396,20 @@ struct PremiumTabView: View {
             }
         }
 
+        // Retry up to 3 times — StoreKit testing server can take a moment to boot
+        var product: Product?
+        for attempt in 1...3 {
+            do {
+                let found = try await Product.products(for: [productID])
+                product = found.first
+            } catch { print("[SK2] HomeView attempt \(attempt): \(error)") }
+            if product != nil { break }
+            if attempt < 3 { try? await Task.sleep(nanoseconds: 700_000_000) }
+        }
+
         do {
-            let products = try await Product.products(for: [productID])
-            guard let product = products.first else {
-                errorMessage = "Product not found. Make sure you run the app from Xcode (Cmd+R) so the StoreKit config is loaded."
+            guard let product else {
+                errorMessage = "Product not found. Make sure the app is run from Xcode (Cmd+R) with the StoreKit configuration active."
                 showError = true
                 return
             }
@@ -2057,6 +2420,8 @@ struct PremiumTabView: View {
                 case .verified(let transaction):
                     await transaction.finish()
                     purchaseSuccess = true
+                    // Persist subscription state so premium features unlock app-wide
+                    PremiumStatus.shared.isSubscribed = true
                 case .unverified(_, let error):
                     errorMessage = "Verification failed: \(error.localizedDescription)"
                     showError = true
@@ -2098,6 +2463,195 @@ private struct PremiumRow: View {
     }
 }
 
+// MARK: ── Settings Sheet ─────────────────────────────────────────────────
+private struct SettingsSheet: View {
+    @Binding var isPresented: Bool
+    @Binding var isDarkMode: Bool
+    let vm: KoalaHomeViewModel
+    var onRenameKoala: () -> Void
+
+    @State private var expandHelp: String? = nil
+
+    private struct FAQ {
+        let title: String; let icon: String; let color: Color; let body: String
+    }
+    private let faqs: [FAQ] = [
+        FAQ(title: "Daily Check-In",
+            icon: "moon.stars.fill",
+            color: Color(red:0.52,green:0.34,blue:0.80),
+            body: "Tap 'Check In' each day to log your mood and keep your streak alive. You earn +15 coins and +100 XP per check-in. You can only check in once per day."),
+        FAQ(title: "Streaks",
+            icon: "flame.fill",
+            color: .orange,
+            body: "Your streak counts how many consecutive days you've checked in. Miss a day and it resets to 0. Premium subscribers can pause a streak on missed days instead of losing it."),
+        FAQ(title: "Coins & Shop",
+            icon: "dollarsign.circle.fill",
+            color: Color(red:0.83,green:0.55,blue:0.13),
+            body: "Earn coins by checking in daily. Spend them in the Shop to decorate your koala's room — lamp, rug, aquarium, fireplace, piano, and more. New items unlock as your level rises."),
+        FAQ(title: "XP & Levels",
+            icon: "star.fill",
+            color: Color(red:0.52,green:0.34,blue:0.80),
+            body: "You earn +100 XP with each check-in. Milestones: Level 2 at 300 XP, Level 3 at 800, Level 4 at 1500, Level 5 at 2500. Higher levels unlock more shop items."),
+        FAQ(title: "Screen Time Blocking",
+            icon: "shield.fill",
+            color: Color(red:0.18,green:0.68,blue:0.68),
+            body: "Tap 'Start Block Session' on the home screen to pick apps to block during a focus period. Requires iOS Screen Time permission. Tap 'End Block Session' to lift all blocks instantly."),
+        FAQ(title: "Your Koala & Room",
+            icon: "house.fill",
+            color: Color(red:0.35,green:0.72,blue:0.35),
+            body: "Your koala lives in a cozy room that grows as you buy décor. It cycles through activities — painting, yoga, stretching, and exercising — throughout the day. The room theme shifts from morning to night (or stays dark with Dark Mode on)."),
+        FAQ(title: "Energy & Mood",
+            icon: "heart.fill",
+            color: Color(red:0.88,green:0.44,blue:0.44),
+            body: "Energy reflects your koala's wellbeing and refills slightly with each check-in. Mood is set by you during the check-in and shows on the home screen."),
+        FAQ(title: "Premium",
+            icon: "crown.fill",
+            color: Color(red:0.52,green:0.34,blue:0.80),
+            body: "Koala Calm Premium ($3.99/mo) unlocks 1.5× coin & XP earn rates, detailed analytics in the Progress tab, premium room items, and streak pause protection. Cancel anytime via iOS Settings → Subscriptions."),
+    ]
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 0) {
+
+                    // ── Preferences ──────────────────────────────────
+                    sectionHeader("Preferences")
+
+                    VStack(spacing: 0) {
+                        // Dark mode
+                        HStack {
+                            settingsIcon("moon.fill", Color(red:0.28,green:0.18,blue:0.52))
+                            Text("Dark Mode")
+                                .font(.system(size: 16, design: .rounded))
+                            Spacer()
+                            Toggle("", isOn: $isDarkMode)
+                                .labelsHidden()
+                                .tint(Color(red:0.52,green:0.34,blue:0.80))
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 14)
+                        .background(Color.white)
+
+                        Divider().padding(.leading, 54)
+
+                        // Rename koala
+                        Button(action: {
+                            isPresented = false
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                                onRenameKoala()
+                            }
+                        }) {
+                            HStack {
+                                settingsIcon("pawprint.fill", Color(red:0.55,green:0.45,blue:0.32))
+                                Text("Rename \(vm.petName.isEmpty ? "Your Koala" : vm.petName)")
+                                    .font(.system(size: 16, design: .rounded))
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 14)
+                        .background(Color.white)
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .shadow(color: .black.opacity(0.05), radius: 6, x: 0, y: 2)
+                    .padding(.horizontal, 16)
+
+                    // ── Help & FAQ ────────────────────────────────────
+                    sectionHeader("Help & FAQ")
+
+                    VStack(spacing: 0) {
+                        ForEach(Array(faqs.enumerated()), id: \.element.title) { idx, faq in
+                            VStack(spacing: 0) {
+                                Button(action: {
+                                    withAnimation(.easeInOut(duration: 0.22)) {
+                                        expandHelp = expandHelp == faq.title ? nil : faq.title
+                                    }
+                                }) {
+                                    HStack(alignment: .top) {
+                                        settingsIcon(faq.icon, faq.color)
+                                        Text(faq.title)
+                                            .font(.system(size: 16, design: .rounded))
+                                            .foregroundColor(.primary)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                        Image(systemName: expandHelp == faq.title ? "chevron.up" : "chevron.down")
+                                            .font(.system(size: 13, weight: .semibold))
+                                            .foregroundColor(.secondary)
+                                            .padding(.top, 2)
+                                    }
+                                }
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 14)
+
+                                if expandHelp == faq.title {
+                                    Text(faq.body)
+                                        .font(.system(size: 14, design: .rounded))
+                                        .foregroundColor(.secondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                        .padding(.bottom, 14)
+                                        .padding(.horizontal, 20)
+                                        .padding(.leading, 42)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                            }
+                            if idx < faqs.count - 1 {
+                                Divider().padding(.leading, 54)
+                            }
+                        }
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .shadow(color: .black.opacity(0.05), radius: 6, x: 0, y: 2)
+                    .padding(.horizontal, 16)
+
+                    Spacer().frame(height: 40)
+                }
+                .padding(.top, 8)
+            }
+            .background(Color(red:0.95,green:0.94,blue:0.92).ignoresSafeArea())
+            .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { isPresented = false }
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .foregroundColor(Color(red:0.52,green:0.34,blue:0.80))
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func sectionHeader(_ title: String) -> some View {
+        HStack {
+            Text(title.uppercased())
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .foregroundColor(Color(red:0.55,green:0.52,blue:0.48))
+                .tracking(0.8)
+            Spacer()
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 24)
+        .padding(.bottom, 8)
+    }
+
+    @ViewBuilder
+    private func settingsIcon(_ name: String, _ color: Color) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(color)
+                .frame(width: 30, height: 30)
+            Image(systemName: name)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(.white)
+        }
+        .padding(.trailing, 12)
+    }
+}
+
 // MARK: ── Top Bar ─────────────────────────────────────────────────────────
 private struct TopBarView: View {
     let vm: KoalaHomeViewModel
@@ -2120,7 +2674,7 @@ private struct TopBarView: View {
 
             Spacer()
 
-            // Center-right: XP + Coins
+            // XP + Coins (grouped, left of settings)
             HStack(spacing: 6) {
                 // XP badge
                 HStack(spacing: 4) {
@@ -2159,12 +2713,21 @@ private struct TopBarView: View {
                 .clipShape(Capsule())
             }
 
-            // Settings gear
+            // Settings button — separated from coins with a small divider feel
+            Rectangle()
+                .fill(tod.subColor.opacity(0.18))
+                .frame(width: 1, height: 20)
+                .padding(.horizontal, 10)
+
             Button(action: { showSettings = true }) {
-                Image(systemName: "gearshape.fill")
-                    .font(.system(size: 18))
-                    .foregroundColor(tod.textColor.opacity(0.65))
-                    .padding(.leading, 8)
+                ZStack {
+                    Circle()
+                        .fill(tod.cardBg)
+                        .frame(width: 32, height: 32)
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(tod.textColor.opacity(0.70))
+                }
             }
         }
     }
@@ -2343,11 +2906,20 @@ private struct RoomWithKoala: View {
                     .frame(width: W * 0.80, height: H * 0.78)
                     .offset(y: -H * 0.04).allowsHitTesting(false)
 
-                // Animated koala — positioned to sit on couch/rug
+                // Animated koala — different position per activity
                 let koalaSize = min(W * 0.44, 170.0)
+                // Horizontal offsets put each activity in a distinct room spot
+                let koalaXOff: CGFloat = {
+                    switch activity {
+                    case .painting:    return -W * 0.14  // slightly left — canvas goes right
+                    case .exercising:  return -W * 0.18  // near left wall with weights
+                    case .yoga:        return  W * 0.02  // centred on carpet
+                    case .stretching:  return  W * 0.02  // centred
+                    }
+                }()
                 AnimatedKoalaView(activity: activity)
                     .frame(width: koalaSize, height: koalaSize)
-                    .offset(y: -koalaSize * 0.10)
+                    .offset(x: koalaXOff, y: -koalaSize * 0.10)
                     .allowsHitTesting(false)
                     .id(activity) // force rebuild on activity change
             }
@@ -2370,6 +2942,8 @@ private struct AnimatedKoalaView: View {
     @State private var headTilt:      Double = 0
     @State private var bodyBounce:    CGFloat = 0
     @State private var propOsc:       CGFloat = 0   // 0–100, drives brush stroke
+    // Painting phases: 0 = painting, 1 = thinking (hand on chin)
+    @State private var paintingPhase: Int = 0
 
     var body: some View {
         GeometryReader { g in
@@ -2406,26 +2980,30 @@ private struct AnimatedKoalaView: View {
                     .position(x: cx, y: cy + H*0.28 + bodyBounce)
 
                 // ── LEFT ARM ─────────────────────────────────────────
-                // Drawn before body so body clips shoulder joint naturally;
-                // arms stick OUT past body edges since shoulders are at ±0.27
-                Capsule()
-                    .fill(LinearGradient(
-                        colors: [Color(red:0.76,green:0.73,blue:0.70), Color(red:0.68,green:0.65,blue:0.62)],
-                        startPoint: .top, endPoint: .bottom))
-                    .frame(width: armW, height: armH)
-                    .rotationEffect(.degrees(leftArmAngle),
-                                    anchor: UnitPoint(x: 0.5, y: 0.0))
-                    .position(x: lShoulderX, y: shoulderY + armH * 0.5)
+                // Yoga renders arms AFTER the head (in foregroundProp) so they
+                // appear over the head when raised overhead. Skip here for yoga.
+                if activity != .yoga {
+                    Capsule()
+                        .fill(LinearGradient(
+                            colors: [Color(red:0.76,green:0.73,blue:0.70), Color(red:0.68,green:0.65,blue:0.62)],
+                            startPoint: .top, endPoint: .bottom))
+                        .frame(width: armW, height: armH)
+                        .rotationEffect(.degrees(leftArmAngle),
+                                        anchor: UnitPoint(x: 0.5, y: 0.0))
+                        .position(x: lShoulderX, y: shoulderY + armH * 0.5)
+                }
 
                 // ── RIGHT ARM ─────────────────────────────────────────
-                Capsule()
-                    .fill(LinearGradient(
-                        colors: [Color(red:0.76,green:0.73,blue:0.70), Color(red:0.68,green:0.65,blue:0.62)],
-                        startPoint: .top, endPoint: .bottom))
-                    .frame(width: armW, height: armH)
-                    .rotationEffect(.degrees(rightArmAngle),
-                                    anchor: UnitPoint(x: 0.5, y: 0.0))
-                    .position(x: rShoulderX, y: shoulderY + armH * 0.5)
+                if activity != .yoga {
+                    Capsule()
+                        .fill(LinearGradient(
+                            colors: [Color(red:0.76,green:0.73,blue:0.70), Color(red:0.68,green:0.65,blue:0.62)],
+                            startPoint: .top, endPoint: .bottom))
+                        .frame(width: armW, height: armH)
+                        .rotationEffect(.degrees(rightArmAngle),
+                                        anchor: UnitPoint(x: 0.5, y: 0.0))
+                        .position(x: rShoulderX, y: shoulderY + armH * 0.5)
+                }
 
                 // ── HEAD + EARS — explicit frame so rotationEffect is correct ──
                 // Frame: W wide, 0.72*W tall. All offsets are from ZStack center.
@@ -2499,7 +3077,30 @@ private struct AnimatedKoalaView: View {
                 foregroundProp(W: W, H: H, cx: cx, cy: cy,
                                rShoulderX: rShoulderX, shoulderY: shoulderY, armH: armH)
 
-                // (Eucalyptus removed)
+                // ── Thinking bubble (painting phase 1 only) ─────────
+                if activity == .painting && paintingPhase == 1 {
+                    // Small dots leading up to the thought cloud
+                    Circle().fill(Color.white).frame(width:W*0.028,height:W*0.028)
+                        .shadow(color:.black.opacity(0.10),radius:2)
+                        .position(x:cx+W*0.08, y:cy-H*0.26)
+                    Circle().fill(Color.white).frame(width:W*0.038,height:W*0.038)
+                        .shadow(color:.black.opacity(0.10),radius:2)
+                        .position(x:cx+W*0.14, y:cy-H*0.29)
+                    Circle().fill(Color.white).frame(width:W*0.050,height:W*0.050)
+                        .shadow(color:.black.opacity(0.10),radius:2)
+                        .position(x:cx+W*0.21, y:cy-H*0.31)
+                    // Main thought cloud
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(Color.white)
+                            .frame(width: W*0.40, height: H*0.09)
+                            .shadow(color: Color.black.opacity(0.12), radius: 4, x:0, y:2)
+                        Text("thinking...")
+                            .font(.system(size: W*0.062, weight: .semibold, design: .rounded))
+                            .foregroundColor(Color(red:0.42,green:0.36,blue:0.30))
+                    }
+                    .position(x: cx + W*0.32, y: cy - H*0.35)
+                }
 
                 // ── Activity label ────────────────────────────────────
                 HStack(spacing: 3) {
@@ -2523,51 +3124,101 @@ private struct AnimatedKoalaView: View {
     private func backgroundProp(W: CGFloat, H: CGFloat, cx: CGFloat, cy: CGFloat) -> some View {
         switch activity {
         case .painting:
-            // Easel legs
+            // Easel — large canvas positioned to the right of the koala
             ZStack {
+                let ex = cx + W*0.46
+                let ey = cy + H*0.22   // vertically centred, lower half of frame
+
+                // Easel legs (two angled struts + cross-brace)
                 Path { p in
-                    let ex = cx + W*0.44, ey = cy - H*0.02
-                    p.move(to:    CGPoint(x: ex - W*0.12, y: ey + H*0.15))
-                    p.addLine(to: CGPoint(x: ex - W*0.07, y: ey + H*0.34))
-                    p.move(to:    CGPoint(x: ex + W*0.12, y: ey + H*0.15))
-                    p.addLine(to: CGPoint(x: ex + W*0.07, y: ey + H*0.34))
-                    // cross brace
-                    p.move(to:    CGPoint(x: ex - W*0.09, y: ey + H*0.24))
-                    p.addLine(to: CGPoint(x: ex + W*0.09, y: ey + H*0.24))
+                    p.move(to:    CGPoint(x: ex - W*0.18, y: ey + H*0.22))
+                    p.addLine(to: CGPoint(x: ex - W*0.10, y: ey + H*0.44))
+                    p.move(to:    CGPoint(x: ex + W*0.18, y: ey + H*0.22))
+                    p.addLine(to: CGPoint(x: ex + W*0.10, y: ey + H*0.44))
+                    p.move(to:    CGPoint(x: ex - W*0.14, y: ey + H*0.32))
+                    p.addLine(to: CGPoint(x: ex + W*0.14, y: ey + H*0.32))
                 }
-                .stroke(Color(red:0.62,green:0.48,blue:0.32), lineWidth: 2.5)
+                .stroke(Color(red:0.55,green:0.40,blue:0.24), lineWidth: 2.5)
 
-                // Canvas frame (wood border)
+                // Canvas wooden frame (big!)
                 RoundedRectangle(cornerRadius: 5)
-                    .fill(Color(red:0.70,green:0.56,blue:0.38))
-                    .frame(width: W*0.30, height: H*0.28)
-                    .position(x: cx + W*0.44, y: cy - H*0.02)
+                    .fill(Color(red:0.62,green:0.46,blue:0.28))
+                    .frame(width: W*0.44, height: H*0.40)
+                    .position(x: ex, y: ey)
 
-                // Canvas surface
+                // Canvas white surface
                 RoundedRectangle(cornerRadius: 3)
-                    .fill(Color(red:0.98,green:0.97,blue:0.93))
-                    .frame(width: W*0.24, height: H*0.22)
-                    .position(x: cx + W*0.44, y: cy - H*0.02)
+                    .fill(Color(red:0.99,green:0.98,blue:0.94))
+                    .frame(width: W*0.38, height: H*0.34)
+                    .position(x: ex, y: ey)
 
-                // Existing paint splotches on canvas
+                // ── Rich painting on the canvas ──
+                // Sky wash (top half)
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(Color(red:0.68,green:0.86,blue:0.98).opacity(0.70))
+                    .frame(width: W*0.38, height: H*0.17)
+                    .position(x: ex, y: ey - H*0.085)
+                // Ground wash (bottom half)
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(Color(red:0.46,green:0.74,blue:0.36).opacity(0.65))
+                    .frame(width: W*0.38, height: H*0.14)
+                    .position(x: ex, y: ey + H*0.10)
+                // Sun
                 Circle()
-                    .fill(Color(red:0.88,green:0.25,blue:0.20).opacity(0.85))
-                    .frame(width: W*0.055)
-                    .position(x: cx + W*0.38, y: cy - H*0.07)
+                    .fill(Color(red:1.0,green:0.88,blue:0.22).opacity(0.95))
+                    .frame(width: W*0.062)
+                    .position(x: ex + W*0.11, y: ey - H*0.10)
+                // Sun rays
+                ForEach(0..<8, id:\.self) { i in
+                    let a = Double(i) * .pi / 4
+                    Rectangle()
+                        .fill(Color(red:1.0,green:0.88,blue:0.22).opacity(0.55))
+                        .frame(width: 1.5, height: W*0.028)
+                        .rotationEffect(.degrees(Double(i) * 45))
+                        .position(x: ex + W*0.11 + CGFloat(Darwin.cos(a)) * W*0.044,
+                                  y: ey - H*0.10 + CGFloat(Darwin.sin(a)) * W*0.044)
+                }
+                // Paint marks concentrated on the right portion where brush lands
+                // Big blue smear (matches brush bristle color)
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color(red:0.22,green:0.46,blue:0.88).opacity(0.88))
+                    .frame(width: W*0.095, height: H*0.028)
+                    .position(x: ex + W*0.10, y: ey - H*0.018)
+                // Red splat (left/center)
+                Circle()
+                    .fill(Color(red:0.90,green:0.22,blue:0.18).opacity(0.82))
+                    .frame(width: W*0.060)
+                    .position(x: ex - W*0.06, y: ey - H*0.042)
+                // Yellow smear (center)
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(Color(red:0.96,green:0.82,blue:0.10).opacity(0.80))
+                    .frame(width: W*0.080, height: H*0.022)
+                    .position(x: ex + W*0.02, y: ey + H*0.048)
+                // Green dab
                 Ellipse()
-                    .fill(Color(red:0.25,green:0.52,blue:0.88).opacity(0.80))
-                    .frame(width: W*0.06, height: W*0.04)
-                    .position(x: cx + W*0.50, y: cy - H*0.05)
+                    .fill(Color(red:0.22,green:0.72,blue:0.32).opacity(0.80))
+                    .frame(width: W*0.052, height: W*0.038)
+                    .position(x: ex - W*0.08, y: ey + H*0.068)
+                // Purple accent (right)
+                Circle()
+                    .fill(Color(red:0.62,green:0.30,blue:0.88).opacity(0.72))
+                    .frame(width: W*0.040)
+                    .position(x: ex + W*0.12, y: ey + H*0.058)
+                // Orange dab (center-right)
                 Ellipse()
-                    .fill(Color(red:0.88,green:0.78,blue:0.12).opacity(0.80))
-                    .frame(width: W*0.07, height: W*0.038)
-                    .position(x: cx + W*0.45, y: cy + H*0.02)
-
-                // Active brush stroke (moves with propOsc)
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color(red:0.28,green:0.52,blue:0.90).opacity(0.75))
-                    .frame(width: W*0.022, height: H*0.055)
-                    .position(x: cx + W*0.52, y: cy - H*0.08 + propOsc * H*0.0012)
+                    .fill(Color(red:0.98,green:0.52,blue:0.12).opacity(0.78))
+                    .frame(width: W*0.046, height: W*0.032)
+                    .position(x: ex + W*0.07, y: ey - H*0.005)
+                // Live animated brush stroke — synced to actual brush tip position
+                // Brush tip x = rShoulderX + sin(arm°)*armH + sin(arm°)*brushLen
+                // where rShoulderX≈W*0.77, armH≈W*0.30, brushLen≈W*0.18
+                // At arm 52°→68°: tip x ≈ W*1.06→W*1.14 (right portion of canvas)
+                // Map propOsc 0→100 to canvas right region
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(Color(red:0.22,green:0.46,blue:0.88).opacity(0.90))
+                    .frame(width: W*0.030, height: H*0.072)
+                    .position(x: ex + W*0.10 + propOsc * W*0.0008,
+                              y: ey - H*0.020)
             }
 
         case .stretching:
@@ -2579,63 +3230,14 @@ private struct AnimatedKoalaView: View {
                 .frame(width: W*0.70, height: H*0.07)
                 .position(x: cx, y: cy + H*0.42)
 
-        case .reading:
-            // Open book held in front — rendered behind koala
-            ZStack {
-                // Left page
-                RoundedRectangle(cornerRadius: 3)
-                    .fill(Color(red:0.98,green:0.97,blue:0.93))
-                    .frame(width: W*0.22, height: H*0.22)
-                    .offset(x: -W*0.11)
-                // Right page
-                RoundedRectangle(cornerRadius: 3)
-                    .fill(Color(red:0.97,green:0.96,blue:0.92))
-                    .frame(width: W*0.22, height: H*0.22)
-                    .offset(x: W*0.11)
-                // Cover spine
-                Rectangle()
-                    .fill(Color(red:0.42,green:0.28,blue:0.65))
-                    .frame(width: W*0.04, height: H*0.22)
-                // Text lines on pages
-                ForEach(0..<4, id: \.self) { i in
-                    let yOff = CGFloat(i - 1) * H*0.046
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.20))
-                        .frame(width: W*0.15, height: 1.5)
-                        .offset(x: -W*0.11, y: yOff)
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.20))
-                        .frame(width: W*0.15, height: 1.5)
-                        .offset(x: W*0.11, y: yOff)
-                }
-                // Book shadow
-                Ellipse()
-                    .fill(Color.black.opacity(0.06))
-                    .frame(width: W*0.48, height: H*0.04)
-                    .offset(y: H*0.12)
-            }
-            .position(x: cx, y: cy + H*0.22)
-
-        case .eating:
-            // Bowl
-            ZStack {
-                Ellipse()
-                    .fill(Color(red:0.82,green:0.65,blue:0.42))
-                    .frame(width: W*0.30, height: H*0.16)
-                    .offset(y: H*0.06)
-                Ellipse()
-                    .fill(Color(red:0.96,green:0.82,blue:0.58))
-                    .frame(width: W*0.30, height: H*0.07)
-                // Bamboo / greens
-                ForEach(0..<3, id: \.self) { i in
-                    Capsule()
-                        .fill(Color(red:0.36,green:0.70,blue:0.28))
-                        .frame(width: W*0.055, height: H*0.18)
-                        .rotationEffect(.degrees(Double(i-1)*18))
-                        .offset(x: CGFloat(i-1)*W*0.08, y: -H*0.05)
-                }
-            }
-            .position(x: cx + W*0.14, y: cy + H*0.26)
+        case .yoga:
+            // Yoga mat (purple, distinct from stretching green mat)
+            RoundedRectangle(cornerRadius: 6)
+                .fill(LinearGradient(
+                    colors: [Color(red:0.70,green:0.54,blue:0.88), Color(red:0.52,green:0.34,blue:0.80)],
+                    startPoint: .leading, endPoint: .trailing))
+                .frame(width: W*0.70, height: H*0.07)
+                .position(x: cx, y: cy + H*0.42)
 
         case .exercising:
             EmptyView()
@@ -2648,40 +3250,47 @@ private struct AnimatedKoalaView: View {
                                 rShoulderX: CGFloat, shoulderY: CGFloat, armH: CGFloat) -> some View {
         switch activity {
         case .painting:
-            // Brush attached to end of right arm
-            // Arm pivot is at (rShoulderX, shoulderY), tip at angle from DOWN
-            let rad = rightArmAngle * Double.pi / 180
-            // Tip of the arm capsule (full armH from shoulder)
-            let tipX = rShoulderX + CGFloat(sin(rad)) * armH
-            let tipY = shoulderY  + CGFloat(cos(rad)) * armH
-            // Brush extends further in the same direction from the tip
-            let brushLen = H * 0.13
-            ZStack {
-                // Brush handle (wood)
+            // Brush held in the right hand — handle anchored at hand tip, bristles toward canvas.
+            // Arm convention: 0° = arm DOWN, positive = clockwise.
+            let rad    = rightArmAngle * Double.pi / 180
+            // Hand tip = bottom of the rotating arm capsule
+            let handX  = rShoulderX + CGFloat(sin(rad)) * armH
+            let handY  = shoulderY  + CGFloat(cos(rad)) * armH
+            // Longer brush so it's clearly visible
+            let brushLen: CGFloat = H * 0.20
+            // Place brush CENTER half a brush-length beyond the hand in arm direction.
+            // After rotation by (armAngle-90), local +x = arm direction, so:
+            //   handle end (local x = -brushLen/2) lands exactly at hand.
+            let brushCX = handX + brushLen * 0.5 * CGFloat(sin(rad))
+            let brushCY = handY - brushLen * 0.5 * CGFloat(cos(rad))
+            ZStack(alignment: .center) {
+                // Wooden handle — warm brown, full brush length
                 Capsule()
-                    .fill(Color(red:0.62,green:0.46,blue:0.28))
-                    .frame(width: W*0.040, height: brushLen)
-                // Ferrule (metal ring)
-                Rectangle()
-                    .fill(Color(red:0.72,green:0.72,blue:0.76))
-                    .frame(width: W*0.044, height: H*0.018)
-                    .offset(y: brushLen * 0.40)
-                // Bristles
-                RoundedRectangle(cornerRadius: 3)
                     .fill(LinearGradient(
-                        colors: [Color(red:0.30,green:0.52,blue:0.88),
-                                 Color(red:0.22,green:0.40,blue:0.78)],
-                        startPoint: .top, endPoint: .bottom))
-                    .frame(width: W*0.032, height: H*0.052)
-                    .offset(y: brushLen * 0.52)
-                // Paint blob at bristle tip
+                        colors: [Color(red:0.78,green:0.58,blue:0.30), Color(red:0.56,green:0.38,blue:0.18)],
+                        startPoint: .leading, endPoint: .trailing))
+                    .frame(width: brushLen, height: W*0.042)
+                // Ferrule (silver collar near bristles)
+                Rectangle()
+                    .fill(Color(red:0.80,green:0.80,blue:0.86))
+                    .frame(width: W*0.022, height: W*0.052)
+                    .offset(x: brushLen * 0.38)
+                // Bristle body (blue paint loaded)
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(LinearGradient(
+                        colors: [Color(red:0.22,green:0.46,blue:0.88),
+                                 Color(red:0.14,green:0.30,blue:0.72)],
+                        startPoint: .leading, endPoint: .trailing))
+                    .frame(width: W*0.058, height: W*0.032)
+                    .offset(x: brushLen * 0.50)
+                // Fat paint blob right at bristle tip
                 Ellipse()
-                    .fill(Color(red:0.28,green:0.52,blue:0.90).opacity(0.85))
-                    .frame(width: W*0.028, height: W*0.020)
-                    .offset(y: brushLen * 0.60)
+                    .fill(Color(red:0.22,green:0.46,blue:0.88).opacity(0.92))
+                    .frame(width: W*0.030, height: W*0.026)
+                    .offset(x: brushLen * 0.62)
             }
-            .rotationEffect(.degrees(rightArmAngle), anchor: .top)
-            .position(x: tipX, y: tipY)
+            .rotationEffect(.degrees(rightArmAngle - 90))
+            .position(x: brushCX, y: brushCY)
 
         case .exercising:
             // Dumbbell in right hand
@@ -2704,6 +3313,28 @@ private struct AnimatedKoalaView: View {
             .rotationEffect(.degrees(rightArmAngle + 90))
             .position(x: dX, y: dY)
 
+        case .yoga:
+            // Yoga arms rendered IN FRONT of head so they show over it when raised overhead
+            let lShoulderX = cx - W*0.27
+            let yogaArmW = W*0.14
+            let yogaArmH = W*0.30
+            // Left arm
+            Capsule()
+                .fill(LinearGradient(
+                    colors: [Color(red:0.76,green:0.73,blue:0.70), Color(red:0.68,green:0.65,blue:0.62)],
+                    startPoint: .top, endPoint: .bottom))
+                .frame(width: yogaArmW, height: yogaArmH)
+                .rotationEffect(.degrees(leftArmAngle), anchor: UnitPoint(x: 0.5, y: 0.0))
+                .position(x: lShoulderX, y: shoulderY + yogaArmH * 0.5)
+            // Right arm
+            Capsule()
+                .fill(LinearGradient(
+                    colors: [Color(red:0.76,green:0.73,blue:0.70), Color(red:0.68,green:0.65,blue:0.62)],
+                    startPoint: .top, endPoint: .bottom))
+                .frame(width: yogaArmW, height: yogaArmH)
+                .rotationEffect(.degrees(rightArmAngle), anchor: UnitPoint(x: 0.5, y: 0.0))
+                .position(x: rShoulderX, y: shoulderY + yogaArmH * 0.5)
+
         default:
             EmptyView()
         }
@@ -2717,24 +3348,53 @@ private struct AnimatedKoalaView: View {
         switch activity {
 
         case .painting:
-            // Right arm sweeps toward canvas (positioned to the right): 75°→95°
-            // This swings the brush across the canvas surface in a natural painting stroke
-            rightArmAngle = 75
-            withAnimation(.easeInOut(duration: 0.70).repeatForever(autoreverses: true)) {
-                rightArmAngle = 95
+            // Arm at ~55°–68° (more horizontal) so the hand + brush clearly reach the canvas.
+            leftArmAngle  = 8   // slight left-arm raise for balance
+            rightArmAngle = 52
+            paintingPhase = 0
+
+            // ── Phase 0: painting (30 seconds) ──
+            withAnimation(.easeInOut(duration: 0.65).repeatForever(autoreverses: true)) {
+                rightArmAngle = 68   // arm sweeps right → brush strokes across canvas
                 propOsc = 100
             }
-            // Left arm hangs relaxed-forward
-            leftArmAngle = 18
-            // Head tilts as if watching the canvas, subtle
-            withAnimation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true)) {
-                headTilt = 10
+            withAnimation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true)) {
+                headTilt = 8   // slight head lean toward canvas
+            }
+
+            // ── After 30 s switch to thinking pose (hand on chin) ──
+            DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
+                guard self.activity == .painting else { return }
+                self.paintingPhase = 1
+                withAnimation(.easeInOut(duration: 0.8)) {
+                    self.rightArmAngle = 8
+                    self.leftArmAngle  = -52
+                    self.propOsc       = 0
+                }
+                withAnimation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true)) {
+                    self.headTilt = 14
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 7) {
+                    guard self.activity == .painting else { return }
+                    self.paintingPhase = 0
+                    withAnimation(.easeInOut(duration: 0.6)) {
+                        self.rightArmAngle = 52
+                        self.leftArmAngle  = 8
+                    }
+                    withAnimation(.easeInOut(duration: 0.65).repeatForever(autoreverses: true)) {
+                        self.rightArmAngle = 68
+                        self.propOsc = 100
+                    }
+                    withAnimation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true)) {
+                        self.headTilt = 8
+                    }
+                }
             }
 
         case .stretching:
-            // Arms sweep out sideways (like a T) then back down
-            rightArmAngle = 10
-            leftArmAngle  = -10
+            // Arms sweep sideways into T-pose. Start straight down at 0°.
+            rightArmAngle = 0
+            leftArmAngle  = 0
             withAnimation(.easeInOut(duration: 2.2).repeatForever(autoreverses: true)) {
                 rightArmAngle = 88    // arm points right (horizontal)
                 leftArmAngle  = -88  // arm points left (horizontal)
@@ -2744,33 +3404,37 @@ private struct AnimatedKoalaView: View {
                 headTilt = 6
             }
 
-        case .reading:
-            // Arms angled slightly outward-downward to hold book in front
-            rightArmAngle = 22
-            leftArmAngle  = -22
-            headTilt = 0
-            // Subtle page-turn: right arm nudges
-            withAnimation(.easeInOut(duration: 3.5).repeatForever(autoreverses: true).delay(1.4)) {
-                rightArmAngle = 10
+        case .yoga:
+            // Yoga: slow sun-salutation breathing — arms sweep from sides all the way
+            // overhead (170°), hold, float back down. Very different from stretching
+            // which only goes to 88° sideways and is fast.
+            rightArmAngle = 0
+            leftArmAngle  = 0
+            headTilt      = 0
+            // Slow 5-second sweep overhead and back — meditative pace
+            withAnimation(.easeInOut(duration: 5.0).repeatForever(autoreverses: true)) {
+                rightArmAngle = 170   // right arm sweeps up past horizontal to overhead
+                leftArmAngle  = -170  // left arm mirrors (symmetric)
+            }
+            // Body lifts slightly as arms rise (deep breath in)
+            withAnimation(.easeInOut(duration: 5.0).repeatForever(autoreverses: true)) {
+                bodyBounce = -7
+            }
+            // Head gently tilts back when arms are overhead (looking up)
+            withAnimation(.easeInOut(duration: 5.0).repeatForever(autoreverses: true).delay(2.5)) {
+                headTilt = -10
             }
 
         case .exercising:
-            // Alternating bicep curls — arms swing forward-down and back
-            rightArmAngle = 20
-            leftArmAngle  = -55
+            // Alternating bicep curls — arms swing forward-down and back.
+            // Start both arms STRAIGHT DOWN, then alternate.
+            rightArmAngle = 0
+            leftArmAngle  = 0
             withAnimation(.easeInOut(duration: 0.55).repeatForever(autoreverses: true)) {
                 rightArmAngle = -55
-                leftArmAngle  = 20
+                leftArmAngle  = 0
                 bodyBounce    = -4
             }
-
-        case .eating:
-            // Right arm scoops toward mouth: 0° → -65° (up toward head)
-            withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
-                rightArmAngle = -65
-            }
-            leftArmAngle = 22
-            headTilt = 0
         }
     }
 }
@@ -2885,63 +3549,75 @@ private struct SparkleStarView: View {
 }
 
 // MARK: ── Mini Koala (top bar) ────────────────────────────────────────────
+// Compact, clearly-koala avatar: fluffy ears fully in frame, round grey head,
+// big black koala nose, eyes and smile. Designed for small 26pt rendering.
 private struct MiniKoalaView: View {
     var body: some View {
-        Canvas { ctx, size in
-            let w = size.width, h = size.height
-            let cx = w/2, cy = h/2 + h*0.04
+        GeometryReader { g in
+            let w = g.size.width
+            let h = g.size.height
+            let cx = w / 2
+            let cy = h / 2 + h * 0.06   // slight offset so ears fit above
+            let headR = w * 0.34        // main head radius
+            let earR  = w * 0.22        // ear radius (fully inside frame)
 
-            // Outer ears (big, fluffy)
-            for s: CGFloat in [-1, 1] {
-                let earX = cx + s * w*0.34
-                let earY = cy - h*0.36
-                let earR = w * 0.24
-                ctx.fill(Circle().path(in: CGRect(x: earX-earR, y: earY-earR, width: earR*2, height: earR*2)),
-                         with: .color(Color(red:0.75,green:0.73,blue:0.71)))
-                let iR = earR * 0.52
-                ctx.fill(Circle().path(in: CGRect(x: earX-iR, y: earY-iR, width: iR*2, height: iR*2)),
-                         with: .color(Color(red:0.96,green:0.83,blue:0.84)))
+            ZStack {
+                // ── EARS (big fluffy, behind head, fully visible in frame) ──
+                ForEach([-1.0, 1.0] as [CGFloat], id: \.self) { s in
+                    // Outer fuzz
+                    Circle()
+                        .fill(Color(red:0.76,green:0.74,blue:0.72))
+                        .frame(width: earR * 2, height: earR * 2)
+                        .position(x: cx + s * w*0.26, y: cy - h*0.28)
+                    // Inner pink
+                    Circle()
+                        .fill(Color(red:0.96,green:0.82,blue:0.83))
+                        .frame(width: earR * 1.05, height: earR * 1.05)
+                        .position(x: cx + s * w*0.26, y: cy - h*0.28)
+                }
+
+                // ── HEAD ──
+                Circle()
+                    .fill(LinearGradient(
+                        colors: [Color(red:0.88,green:0.86,blue:0.84),
+                                 Color(red:0.78,green:0.76,blue:0.74)],
+                        startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .frame(width: headR * 2, height: headR * 2)
+                    .position(x: cx, y: cy)
+
+                // ── MUZZLE (cream) ──
+                Ellipse()
+                    .fill(Color(red:0.96,green:0.94,blue:0.90))
+                    .frame(width: w*0.42, height: h*0.26)
+                    .position(x: cx, y: cy + h*0.10)
+
+                // ── EYES ──
+                ForEach([-1.0, 1.0] as [CGFloat], id: \.self) { s in
+                    Circle()
+                        .fill(Color(red:0.10,green:0.06,blue:0.04))
+                        .frame(width: w*0.12, height: h*0.12)
+                        .position(x: cx + s * w*0.14, y: cy - h*0.04)
+                    // Eye shine
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: w*0.045, height: h*0.045)
+                        .position(x: cx + s * w*0.14 + w*0.02, y: cy - h*0.06)
+                }
+
+                // ── NOSE (big, wide, black — signature koala feature) ──
+                Ellipse()
+                    .fill(Color(red:0.14,green:0.10,blue:0.08))
+                    .frame(width: w*0.26, height: h*0.15)
+                    .position(x: cx, y: cy + h*0.08)
+
+                // ── SMILE ──
+                Path { p in
+                    p.move(to:      CGPoint(x: cx - w*0.08, y: cy + h*0.20))
+                    p.addQuadCurve(to: CGPoint(x: cx + w*0.08, y: cy + h*0.20),
+                                   control: CGPoint(x: cx, y: cy + h*0.26))
+                }
+                .stroke(Color(red:0.18,green:0.12,blue:0.08), lineWidth: 1.2)
             }
-
-            // Head
-            let headR = w * 0.36
-            ctx.fill(Circle().path(in: CGRect(x: cx-headR, y: cy-headR, width: headR*2, height: headR*2)),
-                     with: .color(Color(red:0.85,green:0.83,blue:0.81)))
-
-            // Muzzle
-            let mW = w*0.38, mH = h*0.22
-            ctx.fill(Ellipse().path(in: CGRect(x: cx-mW/2, y: cy+h*0.06, width: mW, height: mH)),
-                     with: .color(Color(red:0.94,green:0.92,blue:0.89)))
-
-            // Eyes
-            for s: CGFloat in [-1, 1] {
-                let eX = cx + s * w*0.13, eY = cy - h*0.04
-                let eR: CGFloat = w*0.070
-                ctx.fill(Circle().path(in: CGRect(x: eX-eR, y: eY-eR, width: eR*2, height: eR*2)),
-                         with: .color(Color(red:0.12,green:0.08,blue:0.04)))
-                let hR = eR*0.38
-                ctx.fill(Circle().path(in: CGRect(x: eX+eR*0.28-hR, y: eY-eR*0.38-hR, width: hR*2, height: hR*2)),
-                         with: .color(.white.opacity(0.90)))
-            }
-
-            // Nose (koala-style wide nose)
-            let nW = w*0.22, nH = h*0.13
-            ctx.fill(Ellipse().path(in: CGRect(x: cx-nW/2, y: cy+h*0.04, width: nW, height: nH)),
-                     with: .color(Color(red:0.18,green:0.12,blue:0.08)))
-
-            // Cheeks
-            for s: CGFloat in [-1, 1] {
-                let bX = cx + s * w*0.22, bY = cy + h*0.12
-                ctx.fill(Ellipse().path(in: CGRect(x: bX-w*0.08, y: bY-h*0.04, width: w*0.16, height: h*0.07)),
-                         with: .color(Color(red:0.99,green:0.72,blue:0.72).opacity(0.38)))
-            }
-
-            // Smile
-            var smile = Path()
-            smile.move(to: CGPoint(x: cx-w*0.09, y: cy+h*0.20))
-            smile.addQuadCurve(to: CGPoint(x: cx+w*0.09, y: cy+h*0.20),
-                               control: CGPoint(x: cx, y: cy+h*0.28))
-            ctx.stroke(smile, with: .color(Color(red:0.18,green:0.12,blue:0.08)), lineWidth: 1.2)
         }
     }
 }
@@ -3027,19 +3703,35 @@ private struct CozyRoomScene: View {
                         colors: [Color(red:0.55,green:0.82,blue:0.98),
                                  Color(red:0.72,green:0.92,blue:1.0)],
                         startPoint: .top, endPoint: .bottom)
-                    // Sun glow (top right)
-                    Circle()
-                        .fill(RadialGradient(
-                            colors:[Color(red:1,green:1,blue:0.85).opacity(0.50),.clear],
-                            center:.center, startRadius:8, endRadius:60))
-                        .frame(width:120, height:120)
-                        .position(x:wW*0.80, y:wH*0.12)
-                    // Clouds — fluffy
+                    // (Sun glow removed — was bleeding yellow onto the mountain
+                    //  peaks and producing a muddy brownish spec.)
+                    // Clouds — fluffy curved paths (organic, not circles)
                     ForEach([(0.22,0.18,0.34,0.11),(0.62,0.14,0.28,0.09),(0.82,0.26,0.22,0.08),(0.42,0.24,0.18,0.07)] as [(CGFloat,CGFloat,CGFloat,CGFloat)], id:\.0) { cx,cy,cw,ch in
-                        Ellipse()
-                            .fill(Color.white.opacity(0.90))
-                            .frame(width:wW*cw, height:wH*ch)
-                            .position(x:wW*cx, y:wH*cy)
+                        Path { p in
+                            let w = wW*cw, h = wH*ch
+                            // Start bottom-left, sweep up over the top with curves, back down
+                            p.move(to: CGPoint(x: 0, y: h))
+                            p.addCurve(to: CGPoint(x: w*0.18, y: h*0.55),
+                                       control1: CGPoint(x: -w*0.05, y: h*0.85),
+                                       control2: CGPoint(x: w*0.02, y: h*0.55))
+                            p.addCurve(to: CGPoint(x: w*0.40, y: h*0.10),
+                                       control1: CGPoint(x: w*0.20, y: h*0.10),
+                                       control2: CGPoint(x: w*0.30, y: -h*0.05))
+                            p.addCurve(to: CGPoint(x: w*0.62, y: h*0.30),
+                                       control1: CGPoint(x: w*0.50, y: h*0.20),
+                                       control2: CGPoint(x: w*0.55, y: h*0.30))
+                            p.addCurve(to: CGPoint(x: w*0.82, y: h*0.20),
+                                       control1: CGPoint(x: w*0.68, y: h*0.05),
+                                       control2: CGPoint(x: w*0.75, y: 0))
+                            p.addCurve(to: CGPoint(x: w, y: h),
+                                       control1: CGPoint(x: w*0.95, y: h*0.40),
+                                       control2: CGPoint(x: w*1.02, y: h*0.80))
+                            p.addLine(to: CGPoint(x: 0, y: h))
+                            p.closeSubpath()
+                        }
+                        .fill(Color.white.opacity(0.92))
+                        .frame(width: wW*cw, height: wH*ch)
+                        .position(x: wW*cx, y: wH*cy)
                     }
                     // Distant mountains (faint blue-purple silhouette)
                     Path { p in
@@ -3123,11 +3815,7 @@ private struct CozyRoomScene: View {
                         let c1 = dark ? Color(red:0.10,green:0.38,blue:0.12) : Color(red:0.18,green:0.50,blue:0.16)
                         let c2 = dark ? Color(red:0.16,green:0.46,blue:0.18) : Color(red:0.26,green:0.58,blue:0.22)
                         let c3 = dark ? Color(red:0.12,green:0.42,blue:0.14) : Color(red:0.22,green:0.54,blue:0.20)
-                        // Trunk
-                        RoundedRectangle(cornerRadius:1.5)
-                            .fill(Color(red:0.38,green:0.26,blue:0.14))
-                            .frame(width:sz*0.08, height:sz*0.28)
-                            .position(x:tx, y:bY - sz*0.12)
+                        // (Brown trunks removed — trees float on grass for a cleaner look)
                         // Bottom tier (widest)
                         Path { p in
                             p.move(to: CGPoint(x: tx - sz*0.44, y: bY - sz*0.22))
@@ -3154,21 +3842,11 @@ private struct CozyRoomScene: View {
                 .frame(width:wW, height:wH)
                 .clipShape(RoundedRectangle(cornerRadius:12))
                 .position(x:wCX, y:wCY)
-                // Window frame (thick brown)
+                // Window frame (thin brown border, no mullions cutting through mountains)
                 RoundedRectangle(cornerRadius:12)
-                    .stroke(Color(red:0.72,green:0.58,blue:0.42), lineWidth:6)
+                    .stroke(Color(red:0.72,green:0.58,blue:0.42), lineWidth:5)
                     .frame(width:wW, height:wH)
                     .position(x:wCX, y:wCY)
-                // Vertical mullion
-                Rectangle()
-                    .fill(Color(red:0.72,green:0.58,blue:0.42))
-                    .frame(width:5, height:wH-8)
-                    .position(x:wCX, y:wCY)
-                // Horizontal mullion
-                Rectangle()
-                    .fill(Color(red:0.72,green:0.58,blue:0.42))
-                    .frame(width:wW-8, height:5)
-                    .position(x:wCX, y:wCY - wH*0.02)
                 // Curtains (lavender)
                 let curtW: CGFloat = 22
                 ForEach([-1, 1] as [CGFloat], id:\.self) { side in
@@ -3181,71 +3859,11 @@ private struct CozyRoomScene: View {
                         .position(x:wCX + side*(wW/2 + curtW/2 - 6), y:wCY)
                 }
 
-                // ── Floor lamp (left) ──────────────────────────────
-                let lmpX = W*0.085
-                // Lamp base disc
-                Ellipse()
-                    .fill(LinearGradient(
-                        colors:[Color(red:0.55,green:0.42,blue:0.28), Color(red:0.44,green:0.34,blue:0.22)],
-                        startPoint:.top, endPoint:.bottom))
-                    .frame(width:W*0.075, height:H*0.018)
-                    .position(x:lmpX, y:floorTop - H*0.006)
-                // Base rim highlight
-                Ellipse()
-                    .strokeBorder(Color(red:0.70,green:0.56,blue:0.38).opacity(0.60), lineWidth:1.2)
-                    .frame(width:W*0.075, height:H*0.018)
-                    .position(x:lmpX, y:floorTop - H*0.006)
-                // Pole (slightly wider, nicely tapered)
-                Path { p in
-                    p.move(to:    CGPoint(x:lmpX - 2.5, y:floorTop - H*0.008))
-                    p.addLine(to: CGPoint(x:lmpX + 2.5, y:floorTop - H*0.008))
-                    p.addLine(to: CGPoint(x:lmpX + 1.5, y:floorTop - H*0.28))
-                    p.addLine(to: CGPoint(x:lmpX - 1.5, y:floorTop - H*0.28))
-                    p.closeSubpath()
-                }
-                .fill(LinearGradient(
-                    colors:[Color(red:0.80,green:0.66,blue:0.50), Color(red:0.62,green:0.50,blue:0.36)],
-                    startPoint:.leading, endPoint:.trailing))
-                // Shade (wide trapezoid, warm cream with stroke)
-                Path { p in
-                    p.move(to:    CGPoint(x:lmpX - W*0.065, y:floorTop - H*0.29))
-                    p.addLine(to: CGPoint(x:lmpX + W*0.065, y:floorTop - H*0.29))
-                    p.addLine(to: CGPoint(x:lmpX + W*0.040, y:floorTop - H*0.38))
-                    p.addLine(to: CGPoint(x:lmpX - W*0.040, y:floorTop - H*0.38))
-                    p.closeSubpath()
-                }
-                .fill(LinearGradient(
-                    colors:[Color(red:0.99,green:0.95,blue:0.84), Color(red:0.96,green:0.90,blue:0.74)],
-                    startPoint:.topLeading, endPoint:.bottomTrailing))
-                // Shade stroke
-                Path { p in
-                    p.move(to:    CGPoint(x:lmpX - W*0.065, y:floorTop - H*0.29))
-                    p.addLine(to: CGPoint(x:lmpX + W*0.065, y:floorTop - H*0.29))
-                    p.addLine(to: CGPoint(x:lmpX + W*0.040, y:floorTop - H*0.38))
-                    p.addLine(to: CGPoint(x:lmpX - W*0.040, y:floorTop - H*0.38))
-                    p.closeSubpath()
-                }
-                .stroke(Color(red:0.72,green:0.58,blue:0.38), lineWidth:1.0)
-                // Inner shade glow
-                Path { p in
-                    p.move(to:    CGPoint(x:lmpX - W*0.054, y:floorTop - H*0.294))
-                    p.addLine(to: CGPoint(x:lmpX + W*0.054, y:floorTop - H*0.294))
-                    p.addLine(to: CGPoint(x:lmpX + W*0.032, y:floorTop - H*0.372))
-                    p.addLine(to: CGPoint(x:lmpX - W*0.032, y:floorTop - H*0.372))
-                    p.closeSubpath()
-                }
-                .fill(Color(red:1,green:0.97,blue:0.82).opacity(0.55))
-                // Warm lamp glow bloom
-                Circle()
-                    .fill(RadialGradient(
-                        colors:[Color(red:1,green:0.96,blue:0.72).opacity(0.38), .clear],
-                        center:.center, startRadius:6, endRadius:50))
-                    .frame(width:100, height:100)
-                    .position(x:lmpX, y:floorTop - H*0.33)
-                    .blur(radius:6)
+                // (Floor lamp removed — replaced by night lamp on side table)
 
                 // ── Side table (right) ────────────────────────────
                 let tableX = W*0.88
+                if owned.contains("side_table") {
                 // Table top
                 Ellipse()
                     .fill(LinearGradient(colors:[Color(red:0.72,green:0.56,blue:0.38),Color(red:0.62,green:0.46,blue:0.28)], startPoint:.top, endPoint:.bottom))
@@ -3263,26 +3881,96 @@ private struct CozyRoomScene: View {
                     .fill(Color(red:0.68,green:0.52,blue:0.34).opacity(0.7))
                     .frame(width:W*0.12, height:H*0.018)
                     .position(x:tableX, y:floorTop - H*0.008)
-                // Small plant on table
-                ZStack {
-                    // Pot
-                    Path { p in
-                        p.move(to:CGPoint(x:-W*0.022, y:H*0.028))
-                        p.addLine(to:CGPoint(x:W*0.022, y:H*0.028))
-                        p.addLine(to:CGPoint(x:W*0.016, y:0))
-                        p.addLine(to:CGPoint(x:-W*0.016, y:0))
-                        p.closeSubpath()
-                    }.fill(Color(red:0.72,green:0.50,blue:0.34))
-                    // Leaves
+                }
+                // Small plant on table — only when side_plant owned (and side_table)
+                if owned.contains("side_table") && owned.contains("side_plant") {
+                    // Anchor: top of table ellipse surface
+                    let tableSurfY = floorTop - H*0.076
+                    let potW: CGFloat = W*0.056
+                    let potH: CGFloat = H*0.036
+                    let rimH: CGFloat = H*0.010
+                    let leafH: CGFloat = H*0.044
+                    let leafW: CGFloat = W*0.026
+                    let pX = tableX + W*0.02
+
+                    // Leaves — bottoms sit at top of rim
                     ForEach([-1,0,1] as [CGFloat], id:\.self) { s in
                         Ellipse()
                             .fill(Color(red:0.26,green:0.62,blue:0.26))
-                            .frame(width:W*0.030, height:H*0.054)
+                            .frame(width: leafW, height: leafH)
                             .rotationEffect(.degrees(Double(s)*22))
-                            .offset(x:s*W*0.018, y:-H*0.044)
+                            .position(x: pX + s*W*0.013,
+                                      y: tableSurfY - potH - rimH - leafH*0.45)
                     }
+                    // Pot rim (sits right on top of pot body)
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Color(red:0.88,green:0.58,blue:0.40))
+                        .frame(width: potW*1.15, height: rimH)
+                        .position(x: pX, y: tableSurfY - potH - rimH*0.5)
+                    // Soil (just inside rim)
+                    Ellipse()
+                        .fill(Color(red:0.32,green:0.22,blue:0.14))
+                        .frame(width: potW*0.80, height: H*0.007)
+                        .position(x: pX, y: tableSurfY - potH)
+                    // Pot body — non-negative path coords so it has proper bounds
+                    Path { p in
+                        p.move(to:    CGPoint(x: 0,       y: 0))
+                        p.addLine(to: CGPoint(x: potW,    y: 0))
+                        p.addLine(to: CGPoint(x: potW*0.84, y: potH))
+                        p.addLine(to: CGPoint(x: potW*0.16, y: potH))
+                        p.closeSubpath()
+                    }
+                    .fill(LinearGradient(
+                        colors:[Color(red:0.82,green:0.52,blue:0.36),
+                                Color(red:0.64,green:0.40,blue:0.26)],
+                        startPoint:.top, endPoint:.bottom))
+                    .frame(width: potW, height: potH)
+                    // position: center is halfway up the pot, bottom lands on tableSurfY
+                    .position(x: pX, y: tableSurfY - potH*0.5)
                 }
-                .position(x:tableX + W*0.02, y:floorTop - H*0.09)
+
+                // ── Night lamp on side table (requires side_table + cozy_lamp) ────────
+                if owned.contains("side_table") && owned.contains("cozy_lamp") {
+                ZStack {
+                        // Warm glow bloom
+                        Circle()
+                            .fill(RadialGradient(
+                                colors:[Color(red:1,green:0.92,blue:0.60).opacity(0.45), .clear],
+                                center:.center, startRadius:4, endRadius:32))
+                            .frame(width:64, height:64)
+                            .blur(radius:5)
+                        // Lamp base (small disc)
+                        Capsule()
+                            .fill(LinearGradient(
+                                colors:[Color(red:0.78,green:0.62,blue:0.44), Color(red:0.60,green:0.46,blue:0.30)],
+                                startPoint:.top, endPoint:.bottom))
+                            .frame(width:W*0.052, height:H*0.010)
+                            .offset(y:H*0.030)
+                        // Short pole
+                        Rectangle()
+                            .fill(Color(red:0.72,green:0.56,blue:0.38))
+                            .frame(width:2.5, height:H*0.038)
+                            .offset(y:H*0.006)
+                        // Drum shade (short + wide for a cozy night lamp look)
+                        RoundedRectangle(cornerRadius:4)
+                            .fill(LinearGradient(
+                                colors:[Color(red:1.00,green:0.96,blue:0.78), Color(red:0.96,green:0.88,blue:0.60)],
+                                startPoint:.top, endPoint:.bottom))
+                            .frame(width:W*0.072, height:H*0.030)
+                            .offset(y:-H*0.012)
+                        RoundedRectangle(cornerRadius:4)
+                            .stroke(Color(red:0.70,green:0.54,blue:0.30), lineWidth:1.0)
+                            .frame(width:W*0.072, height:H*0.030)
+                            .offset(y:-H*0.012)
+                        // Inner highlight
+                        RoundedRectangle(cornerRadius:3)
+                            .fill(Color(red:1,green:0.97,blue:0.80).opacity(0.60))
+                            .frame(width:W*0.054, height:H*0.010)
+                            .offset(y:-H*0.018)
+                    }
+                    .position(x:tableX - W*0.04, y:floorTop - H*0.090)
+                }
+
                 // Wall clock above table
                 ZStack {
                     Circle()
@@ -3306,7 +3994,7 @@ private struct CozyRoomScene: View {
                         .fill(Color(red:0.22,green:0.18,blue:0.14))
                         .frame(width:W*0.012)
                 }
-                .position(x:tableX, y:H*0.16)
+                .position(x:tableX + W*0.04, y:H*0.16)
 
                 // ── Rug (circular, centered on floor) ──────────────
                 Ellipse()
@@ -3317,88 +4005,179 @@ private struct CozyRoomScene: View {
                     .strokeBorder(Color(red:0.86,green:0.80,blue:0.72), lineWidth:2)
                     .frame(width:W*0.44, height:H*0.08)
                     .position(x:W/2, y:floorTop + H*0.09)
-                // Colored rug if owned
+                // Colored rug if owned — half pink, half blue (matches shop icon)
                 if owned.contains("rug") {
+                    ZStack {
+                        // Pink full base
+                        Ellipse()
+                            .fill(Color(red:0.92,green:0.58,blue:0.66).opacity(0.92))
+                            .frame(width:W*0.48, height:H*0.09)
+                        // Blue right half, masked to the ellipse
+                        Ellipse()
+                            .fill(Color(red:0.46,green:0.66,blue:0.92).opacity(0.92))
+                            .frame(width:W*0.48, height:H*0.09)
+                            .mask(
+                                HStack(spacing: 0) {
+                                    Color.clear
+                                    Color.black
+                                }
+                                .frame(width:W*0.48, height:H*0.09)
+                            )
+                        // Center divider
+                        Rectangle()
+                            .fill(Color.white.opacity(0.55))
+                            .frame(width: 1.5, height: H*0.075)
+                        // Soft rim
+                        Ellipse()
+                            .stroke(Color(red:0.62,green:0.46,blue:0.62).opacity(0.40), lineWidth: 1)
+                            .frame(width:W*0.48, height:H*0.09)
+                    }
+                    .position(x:W/2, y:floorTop + H*0.09)
+                }
+
+                // ── Sofa (centered, below window) ── (Premium only)
+                if owned.contains("couch") && PremiumStatus.shared.isSubscribed {
+                    let sofaY = floorTop - H*0.02
+                    let sofaW = W*0.56, sofaH = H*0.22
+                    // Sofa shadow
                     Ellipse()
-                        .fill(LinearGradient(
-                            colors:[Color(red:0.86,green:0.42,blue:0.42).opacity(0.4),
-                                    Color(red:0.42,green:0.62,blue:0.88).opacity(0.4)],
-                            startPoint:.leading, endPoint:.trailing))
-                        .frame(width:W*0.48, height:H*0.09)
-                        .position(x:W/2, y:floorTop + H*0.09)
+                        .fill(Color.black.opacity(0.06))
+                        .frame(width:sofaW*0.90, height:8)
+                        .position(x:W/2, y:sofaY + sofaH*0.38)
+                    // Sofa legs
+                    ForEach([-sofaW*0.36, -sofaW*0.12, sofaW*0.12, sofaW*0.36] as [CGFloat], id:\.self) { lx in
+                        RoundedRectangle(cornerRadius:2)
+                            .fill(Color(red:0.52,green:0.38,blue:0.22))
+                            .frame(width:W*0.022, height:H*0.024)
+                            .position(x:W/2+lx, y:sofaY + sofaH*0.34)
+                    }
+                    // Seat base
+                    RoundedRectangle(cornerRadius:8)
+                        .fill(Color.sofaP)
+                        .frame(width:sofaW-6, height:sofaH*0.28)
+                        .position(x:W/2, y:sofaY + sofaH*0.10)
+                    // Backrest
+                    RoundedRectangle(cornerRadius:14)
+                        .fill(LinearGradient(colors:[Color.sofaL,Color.sofaP],
+                                             startPoint:.topLeading, endPoint:.bottomTrailing))
+                        .frame(width:sofaW, height:sofaH*0.65)
+                        .position(x:W/2, y:sofaY - sofaH*0.18)
+                    // Tufting buttons
+                    ForEach([-W*0.13, 0, W*0.13] as [CGFloat], id:\.self) { tx in
+                        Circle()
+                            .fill(Color.sofaD.opacity(0.40))
+                            .frame(width:W*0.018)
+                            .position(x:W/2+tx, y:sofaY - sofaH*0.20)
+                    }
+                    // Armrests
+                    ForEach([-sofaW/2+W*0.035, sofaW/2-W*0.035] as [CGFloat], id:\.self) { ax in
+                        RoundedRectangle(cornerRadius:10)
+                            .fill(Color.sofaD)
+                            .frame(width:W*0.06, height:sofaH*0.60)
+                            .position(x:W/2+ax, y:sofaY - sofaH*0.06)
+                    }
+                    // Two seat cushions
+                    HStack(spacing: W*0.02) {
+                        RoundedRectangle(cornerRadius:10)
+                            .fill(LinearGradient(colors:[Color.sofaL,Color.sofaP],startPoint:.top,endPoint:.bottom))
+                            .frame(width:sofaW*0.42, height:sofaH*0.26)
+                        RoundedRectangle(cornerRadius:10)
+                            .fill(LinearGradient(colors:[Color.sofaL,Color.sofaP],startPoint:.top,endPoint:.bottom))
+                            .frame(width:sofaW*0.42, height:sofaH*0.26)
+                    }
+                    .position(x:W/2, y:sofaY + sofaH*0.02)
+                    // Throw pillows — only shown when "cushion" item is owned AND premium
+                    if owned.contains("cushion") && PremiumStatus.shared.isSubscribed {
+                    RoundedRectangle(cornerRadius:10)
+                        .fill(Color.pillPink)
+                        .frame(width:sofaW*0.16, height:sofaH*0.34)
+                        .rotationEffect(.degrees(-10))
+                        .position(x:W/2-sofaW*0.22, y:sofaY - sofaH*0.12)
+                    RoundedRectangle(cornerRadius:10)
+                        .fill(Color.pillBlue)
+                        .frame(width:sofaW*0.15, height:sofaH*0.32)
+                        .rotationEffect(.degrees(9))
+                        .position(x:W/2+sofaW*0.22, y:sofaY - sofaH*0.12)
+                    // Center accent cushion
+                        RoundedRectangle(cornerRadius:10)
+                            .fill(Color(red:0.90,green:0.74,blue:0.88))
+                            .frame(width:sofaW*0.14, height:sofaH*0.30)
+                            .position(x:W/2, y:sofaY - sofaH*0.14)
+                    }
                 }
 
-                // ── Sofa (centered, below window) ──────────────────
-                let sofaY = floorTop - H*0.02
-                let sofaW = W*0.56, sofaH = H*0.22
-                // Sofa shadow
-                Ellipse()
-                    .fill(Color.black.opacity(0.06))
-                    .frame(width:sofaW*0.90, height:8)
-                    .position(x:W/2, y:sofaY + sofaH*0.38)
-                // Sofa legs
-                ForEach([-sofaW*0.36, -sofaW*0.12, sofaW*0.12, sofaW*0.36] as [CGFloat], id:\.self) { lx in
-                    RoundedRectangle(cornerRadius:2)
-                        .fill(Color(red:0.52,green:0.38,blue:0.22))
-                        .frame(width:W*0.022, height:H*0.024)
-                        .position(x:W/2+lx, y:sofaY + sofaH*0.34)
-                }
-                // Seat base
-                RoundedRectangle(cornerRadius:8)
-                    .fill(Color.sofaP)
-                    .frame(width:sofaW-6, height:sofaH*0.28)
-                    .position(x:W/2, y:sofaY + sofaH*0.10)
-                // Backrest
-                RoundedRectangle(cornerRadius:14)
-                    .fill(LinearGradient(colors:[Color.sofaL,Color.sofaP],
-                                         startPoint:.topLeading, endPoint:.bottomTrailing))
-                    .frame(width:sofaW, height:sofaH*0.65)
-                    .position(x:W/2, y:sofaY - sofaH*0.18)
-                // Tufting buttons
-                ForEach([-W*0.13, 0, W*0.13] as [CGFloat], id:\.self) { tx in
-                    Circle()
-                        .fill(Color.sofaD.opacity(0.40))
-                        .frame(width:W*0.018)
-                        .position(x:W/2+tx, y:sofaY - sofaH*0.20)
-                }
-                // Armrests
-                ForEach([-sofaW/2+W*0.035, sofaW/2-W*0.035] as [CGFloat], id:\.self) { ax in
-                    RoundedRectangle(cornerRadius:10)
-                        .fill(Color.sofaD)
-                        .frame(width:W*0.06, height:sofaH*0.60)
-                        .position(x:W/2+ax, y:sofaY - sofaH*0.06)
-                }
-                // Two seat cushions
-                HStack(spacing: W*0.02) {
-                    RoundedRectangle(cornerRadius:10)
-                        .fill(LinearGradient(colors:[Color.sofaL,Color.sofaP],startPoint:.top,endPoint:.bottom))
-                        .frame(width:sofaW*0.42, height:sofaH*0.26)
-                    RoundedRectangle(cornerRadius:10)
-                        .fill(LinearGradient(colors:[Color.sofaL,Color.sofaP],startPoint:.top,endPoint:.bottom))
-                        .frame(width:sofaW*0.42, height:sofaH*0.26)
-                }
-                .position(x:W/2, y:sofaY + sofaH*0.02)
-                // Throw pillows
-                RoundedRectangle(cornerRadius:10)
-                    .fill(Color.pillPink)
-                    .frame(width:sofaW*0.16, height:sofaH*0.34)
-                    .rotationEffect(.degrees(-10))
-                    .position(x:W/2-sofaW*0.22, y:sofaY - sofaH*0.12)
-                RoundedRectangle(cornerRadius:10)
-                    .fill(Color.pillBlue)
-                    .frame(width:sofaW*0.15, height:sofaH*0.32)
-                    .rotationEffect(.degrees(9))
-                    .position(x:W/2+sofaW*0.22, y:sofaY - sofaH*0.12)
-                // Extra cushion if owned
-                if owned.contains("cushion") {
-                    RoundedRectangle(cornerRadius:10)
-                        .fill(Color(red:0.90,green:0.74,blue:0.88))
-                        .frame(width:sofaW*0.14, height:sofaH*0.30)
-                        .position(x:W/2, y:sofaY - sofaH*0.14)
+                // Candle wall sconce if owned — mounted on the wall (right side)
+                if owned.contains("candle") {
+                    ZStack {
+                        // Warm halo glow against the wall
+                        Ellipse()
+                            .fill(RadialGradient(
+                                colors:[Color(red:1,green:0.85,blue:0.45).opacity(0.55), .clear],
+                                center:.center, startRadius:6, endRadius:46))
+                            .frame(width: W*0.22, height: H*0.14)
+                            .offset(y: -H*0.018)
+                            .blur(radius: 6)
+
+                        // Wall-mounted shelf/sconce plate
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(LinearGradient(
+                                colors:[Color(red:0.62,green:0.46,blue:0.30), Color(red:0.48,green:0.34,blue:0.22)],
+                                startPoint:.top, endPoint:.bottom))
+                            .frame(width: W*0.13, height: H*0.012)
+                            .offset(y: H*0.020)
+                        // Decorative bracket under the shelf
+                        Path { p in
+                            p.move(to: CGPoint(x: -W*0.045, y: 0))
+                            p.addQuadCurve(to: CGPoint(x: W*0.045, y: 0),
+                                           control: CGPoint(x: 0, y: H*0.018))
+                        }
+                        .stroke(Color(red:0.48,green:0.34,blue:0.22), lineWidth: 1.5)
+                        .frame(width: W*0.09, height: H*0.018)
+                        .offset(y: H*0.030)
+
+                        // Three candles on the sconce shelf
+                        ForEach([-W*0.030, 0, W*0.030] as [CGFloat], id: \.self) { xOff in
+                            let isCenter = (xOff == 0)
+                            let bodyH: CGFloat = isCenter ? H*0.060 : H*0.046
+                            ZStack {
+                                // Candle body
+                                RoundedRectangle(cornerRadius: 1.4)
+                                    .fill(LinearGradient(
+                                        colors:[Color(red:1.00,green:0.98,blue:0.92), Color(red:0.92,green:0.88,blue:0.78)],
+                                        startPoint:.top, endPoint:.bottom))
+                                    .frame(width: W*0.018, height: bodyH)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 1.4)
+                                            .stroke(Color(red:0.68,green:0.58,blue:0.40).opacity(0.7), lineWidth: 0.6)
+                                    )
+                                // Wick
+                                Rectangle()
+                                    .fill(Color(red:0.20,green:0.14,blue:0.10))
+                                    .frame(width: 1, height: 2.4)
+                                    .offset(y: -bodyH/2 - 1.2)
+                                // Flame
+                                Ellipse()
+                                    .fill(LinearGradient(
+                                        colors:[Color(red:1,green:0.95,blue:0.40), Color(red:1,green:0.55,blue:0.05)],
+                                        startPoint:.top, endPoint:.bottom))
+                                    .frame(width: W*0.010, height: H*0.022)
+                                    .offset(y: -bodyH/2 - H*0.014)
+                                // Flame core
+                                Ellipse()
+                                    .fill(Color(red:1,green:1,blue:0.80).opacity(0.85))
+                                    .frame(width: W*0.005, height: H*0.010)
+                                    .offset(y: -bodyH/2 - H*0.013)
+                            }
+                            // Anchor candle BOTTOM on the shelf
+                            .offset(x: xOff, y: -bodyH/2 + H*0.014)
+                        }
+                    }
+                    // Mount on the wall to the LEFT of the window (visible blank wall area)
+                    .position(x: W*0.08, y: H*0.16)
                 }
 
-                // Fireplace on left wall if owned
-                if owned.contains("fireplace") {
+                // Fireplace on left wall if owned (Premium only)
+                if owned.contains("fireplace") && PremiumStatus.shared.isSubscribed {
                     ZStack {
                         // Stone surround
                         RoundedRectangle(cornerRadius:6)
@@ -3429,6 +4208,8 @@ private struct CozyRoomScene: View {
                     }
                     .position(x:W*0.10, y:floorTop - H*0.07)
                 }
+
+                // (Aquarium, bookshelf, hanging plant, and zen garden removed)
             }
         }
     }

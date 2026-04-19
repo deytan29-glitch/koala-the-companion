@@ -19,7 +19,6 @@ import { updateUI, updateGoalUI, updateHealthUI, openGoalSheet, closeGoalSheet, 
 import { updateEnergyUI, activeEnergyDrain } from './energySystem.js';
 import { updateMood, updateMoodUI } from './moodSystem.js';
 import { tryRandomEvent, showEventToast } from './eventSystem.js';
-import { openFocusMode, closeFocusMode, startFocusSession, stopFocusSession, pauseFocusSession, selectFocusDuration, addTenMinBonus } from './focusModeSystem.js';
 import { runSplash } from './splashSystem.js';
 import { runOnboarding, shouldShowOnboarding } from './onboardingSystem.js';
 import { initNotifications } from './notificationSystem.js';
@@ -59,13 +58,6 @@ window.startMiniGame    = startMiniGame;
 window.closeMiniGame    = closeMiniGame;
 window.openAdvFullView  = openAdvFullView;
 window.closeAdvFullView = closeAdvFullView;
-window.openFocusMode        = openFocusMode;
-window.closeFocusMode       = closeFocusMode;
-window.startFocusSession    = startFocusSession;
-window.stopFocusSession     = stopFocusSession;
-window.pauseFocusSession    = pauseFocusSession;
-window.selectFocusDuration  = selectFocusDuration;
-window.addTenMinBonus       = addTenMinBonus;
 window.openUrgeInterrupt  = openUrgeInterrupt;
 window.closeUrgeInterrupt = closeUrgeInterrupt;
 window.openFeedOverlay    = openFeedOverlay;
@@ -187,15 +179,36 @@ window.openSettings = function() {
   const overlay = document.getElementById('settingsOverlay');
   const sheet   = document.getElementById('settingsSheet');
   if (overlay) overlay.classList.add('open');
-  if (sheet)   sheet.classList.add('open');
+  if (sheet)   { sheet.classList.add('open'); sheet.scrollTop = 0; }
   const toggle = document.getElementById('darkModeToggle');
   if (toggle) toggle.checked = !!state.settings?.darkMode;
+  // Update rename sub-text
+  const nameSub = document.getElementById('settingsKoalaNameSub');
+  if (nameSub) nameSub.textContent = state.petName ? `Currently: "${state.petName}"` : "Tap to change your koala's name";
+  // Update scenery buttons
+  const sc = state.scenery || 'default';
+  document.querySelectorAll('.scenery-pill').forEach(b => b.classList.remove('active-scenery'));
+  const scBtn = document.getElementById('sceneryBtn_' + sc);
+  if (scBtn) scBtn.classList.add('active-scenery');
 };
 window.closeSettings = function() {
   const overlay = document.getElementById('settingsOverlay');
   const sheet   = document.getElementById('settingsSheet');
   if (overlay) overlay.classList.remove('open');
   if (sheet)   sheet.classList.remove('open');
+};
+window.setScenery = function(name) {
+  if (!state.scenery) state.scenery = 'default';
+  state.scenery = name;
+  save();
+  document.querySelectorAll('.scenery-pill').forEach(b => b.classList.remove('active-scenery'));
+  const btn = document.getElementById('sceneryBtn_' + name);
+  if (btn) btn.classList.add('active-scenery');
+  const filters = { default:'none', desert:'hue-rotate(28deg) saturate(1.3) brightness(1.04)', snow:'hue-rotate(195deg) saturate(.45) brightness(1.18)', beach:'hue-rotate(-18deg) saturate(1.35) brightness(1.07)', city:'hue-rotate(220deg) saturate(.6) brightness(.93)' };
+  const f = filters[name] || 'none';
+  ['sceneFar','sceneMid','sceneNear'].forEach(id => { const el = document.getElementById(id); if (el) el.style.filter = f; });
+  const floor = document.getElementById('roomFloor');
+  if (floor) { const fc = { default:'', desert:'filter:sepia(.4) hue-rotate(10deg)', snow:'filter:brightness(1.3) hue-rotate(195deg) saturate(.3)', beach:'filter:sepia(.2) brightness(1.1)', city:'filter:brightness(.85) saturate(.7)' }; floor.style.cssText = fc[name] || ''; }
 };
 window.toggleDarkMode = function(enabled) {
   document.body.classList.toggle('dark', enabled);
@@ -542,6 +555,9 @@ function boot() {
   if (_roomNameEl) _roomNameEl.textContent = { living:'Living Room', kitchen:'Kitchen', bedroom:'Bedroom' }[state.currentRoom || 'living'] || 'Living Room';
   document.getElementById('kitchenScene')?.classList.toggle('active', (state.currentRoom || 'living') === 'kitchen');
   document.getElementById('bedroomScene')?.classList.toggle('active', (state.currentRoom || 'living') === 'bedroom');
+
+  // 6c. Restore scenery
+  if (state.scenery && state.scenery !== 'default') { window.setScenery(state.scenery); }
 
   // 7. Start koala life systems
   startBlinking();

@@ -10,7 +10,10 @@ export const SHOP_ITEMS = [
   { id:'plant',      name:'Potted Plant',      cost:8,  icon:'plant',      category:'decor',   tier:1, room:'living', desc:'A leafy companion full of life.',        effect:'-15% health decay',             pos:{bottom:'24%',right:'19%',w:36,h:52,z:3}, requires:'sidetable' },
   { id:'frame',      name:'Wall Art',          cost:18, icon:'frame',      category:'decor',   tier:2, room:'living', desc:'A little art to brighten the wall.',     effect:'+mood boost',                   pos:{bottom:'64%',left:'2%',w:55,h:48,z:0} },
   { id:'floorplant', name:'Floor Plant',       cost:30, icon:'floorplant', category:'decor',   tier:2, room:'living', desc:'A tall leafy friend in the corner.',     effect:'-20% health decay',             pos:{bottom:'24%',left:'1%',w:44,h:95,z:1} },
-  { id:'shelf',      name:'Bookshelf',         cost:28, icon:'shelf',      category:'room',    tier:2, room:'living', desc:'Fill the room with stories.',            effect:'+5% energy, +mood',             pos:{bottom:'52%',right:'0%',w:68,h:78,z:2}, minLevel:2 },
+  { id:'throne',      name:'Royal Throne',   cost:85,  icon:'throne',      category:'room',    tier:3, room:'living', desc:'A regal throne fit for royalty.',        effect:'+mood, +0.4/hr regen',          pos:{bottom:'24%',right:'2%',w:66,h:82,z:2}, isThrone:true, minLevel:4 },
+  { id:'aquarium',    name:'Fish Tank',       cost:55,  icon:'aquarium',    category:'decor',   tier:2, room:'living', desc:'A bubbling tank of colorful fish.',      effect:'+energy, +mood',                pos:{bottom:'24%',left:'3%',w:60,h:55,z:2}, minLevel:3 },
+  { id:'zen_garden',  name:'Zen Garden',      cost:40,  icon:'zen_garden',  category:'decor',   tier:2, room:'living', desc:'A tranquil sandy garden for peace.',     effect:'-10% health decay, +mood',      pos:{bottom:'24%',right:'20%',w:50,h:38,z:3}, minLevel:2 },
+  { id:'plant_table', name:'Plant Table',     cost:32,  icon:'plant_table', category:'decor',   tier:2, room:'living', desc:'A wooden table topped with plants.',     effect:'+mood, -8% health decay',       pos:{bottom:'24%',left:'15%',w:54,h:58,z:3}, minLevel:2 },
   { id:'cat',        name:'Sleeping Cat',      cost:35, icon:'cat',        category:'decor',   tier:2, room:'living', desc:'A lazy cat naps beside the koala.',      effect:'Random coin rewards, +mood',    pos:{bottom:'24%',right:'33%',w:32,h:22,z:4}, minLevel:3 },
   { id:'curtains',   name:'Window Curtains',   cost:45, icon:'curtains',   category:'room',    tier:3, room:'living', desc:'Soft drapes to frame the view.',         effect:'-5% decay, +mood',              pos:null, minLevel:3 },
   { id:'weather',    name:'Weather System',    cost:60, icon:'weather',    category:'special', tier:3, room:'living', desc:'Live weather on the window.',            effect:'Dynamic weather effects',       pos:null, minLevel:5 },
@@ -101,12 +104,13 @@ export function itemSVG(icon, w, h) {
     </svg>`,
 
     lamp: `<svg viewBox="0 0 ${s} ${t}" width="${s}" height="${t}" fill="none">
-      <rect x="${cx-3}" y="${t-13}" width="6" height="12" rx="1" fill="#A08260"/>
-      <rect x="${cx-8}" y="${t-4}" width="16" height="4" rx="2" fill="#8E7658"/>
-      <rect x="${cx-2}" y="18" width="4" height="${t-30}" fill="#A08260"/>
-      <path d="M${cx-13} 20 L${cx+13} 20 L${cx+8} 4 L${cx-8} 4 Z" fill="#F8E8B0" stroke="#DCC880" stroke-width="1"/>
-      <ellipse cx="${cx}" cy="4" rx="5" ry="2" fill="#F5E8C0"/>
-      <ellipse cx="${cx}" cy="20" rx="11" ry="3" fill="#F0D890" opacity=".4"/>
+      <!-- Base -->
+      <rect x="${cx-8}" y="${t-5}" width="16" height="5" rx="2" fill="#8E7658"/>
+      <rect x="${cx-3}" y="${Math.round(t*0.55)}" width="6" height="${Math.round(t*0.38)}" rx="1" fill="#A08260"/>
+      <!-- Shade — perfectly centered around cx -->
+      <path d="M${cx-12} ${Math.round(t*0.54)} L${cx+12} ${Math.round(t*0.54)} L${cx+7} ${Math.round(t*0.12)} L${cx-7} ${Math.round(t*0.12)} Z" fill="#F8E8B0" stroke="#DCC880" stroke-width="1"/>
+      <ellipse cx="${cx}" cy="${Math.round(t*0.12)}" rx="5" ry="2" fill="#F5E8C0"/>
+      <ellipse cx="${cx}" cy="${Math.round(t*0.54)}" rx="11" ry="3" fill="#F0D890" opacity=".4"/>
     </svg>`,
 
     nightlamp: `<svg viewBox="0 0 ${s} ${t}" width="${s}" height="${t}" fill="none">
@@ -238,6 +242,119 @@ export function itemSVG(icon, w, h) {
       <polygon points="${cx-6},22 ${cx-4},22 ${cx-5},28" fill="#B0DCFF" opacity=".8"/>
       <polygon points="${cx},23 ${cx+2},23 ${cx+1},30" fill="#A8D4FF" opacity=".9"/>
       <polygon points="${cx+5},22 ${cx+7},22 ${cx+6},27" fill="#B8E0FF" opacity=".7"/>
+    </svg>`,
+
+    throne: `<svg viewBox="0 0 ${s} ${t}" width="${s}" height="${t}" fill="none">
+      <!-- High arched back -->
+      <path d="M${Math.round(cx-16)} ${Math.round(t*0.12)} Q${Math.round(cx-18)} ${Math.round(t*0.04)} ${cx} ${Math.round(t*0.03)} Q${Math.round(cx+18)} ${Math.round(t*0.04)} ${Math.round(cx+16)} ${Math.round(t*0.12)}" fill="#7B4FBB" stroke="#5A3090" stroke-width="1.2"/>
+      <!-- Back panel -->
+      <rect x="${Math.round(cx-16)}" y="${Math.round(t*0.10)}" width="32" height="${Math.round(t*0.46)}" rx="3" fill="#8B5FCC" stroke="#6A3F9A" stroke-width="1"/>
+      <!-- Back panel inner highlight -->
+      <rect x="${Math.round(cx-12)}" y="${Math.round(t*0.13)}" width="24" height="${Math.round(t*0.38)}" rx="2" fill="#9A6FDC" opacity=".5"/>
+      <!-- Seat -->
+      <rect x="${Math.round(cx-18)}" y="${Math.round(t*0.55)}" width="36" height="${Math.round(t*0.20)}" rx="3" fill="#9A6FDC" stroke="#6A3F9A" stroke-width="1"/>
+      <!-- Seat cushion -->
+      <rect x="${Math.round(cx-16)}" y="${Math.round(t*0.56)}" width="32" height="${Math.round(t*0.16)}" rx="3" fill="#C090F8"/>
+      <!-- Left armrest -->
+      <rect x="${Math.round(cx-22)}" y="${Math.round(t*0.45)}" width="8" height="${Math.round(t*0.30)}" rx="3" fill="#7B4FBB" stroke="#5A3090" stroke-width="1"/>
+      <rect x="${Math.round(cx-23)}" y="${Math.round(t*0.45)}" width="10" height="6" rx="3" fill="#9060CC"/>
+      <!-- Right armrest -->
+      <rect x="${Math.round(cx+14)}" y="${Math.round(t*0.45)}" width="8" height="${Math.round(t*0.30)}" rx="3" fill="#7B4FBB" stroke="#5A3090" stroke-width="1"/>
+      <rect x="${Math.round(cx+13)}" y="${Math.round(t*0.45)}" width="10" height="6" rx="3" fill="#9060CC"/>
+      <!-- Legs -->
+      <rect x="${Math.round(cx-16)}" y="${Math.round(t*0.74)}" width="6" height="${Math.round(t*0.22)}" rx="2" fill="#5C3090"/>
+      <rect x="${Math.round(cx+10)}" y="${Math.round(t*0.74)}" width="6" height="${Math.round(t*0.22)}" rx="2" fill="#5C3090"/>
+      <!-- Gold gem in arch center -->
+      <circle cx="${cx}" cy="${Math.round(t*0.06)}" r="4" fill="#FFD700" stroke="#C8A000" stroke-width="1"/>
+      <!-- Gold accent dots -->
+      <circle cx="${Math.round(cx-10)}" cy="${Math.round(t*0.18)}" r="2" fill="#FFD700" opacity=".8"/>
+      <circle cx="${Math.round(cx+10)}" cy="${Math.round(t*0.18)}" r="2" fill="#FFD700" opacity=".8"/>
+      <circle cx="${cx}" cy="${Math.round(t*0.18)}" r="2" fill="#FFD700" opacity=".7"/>
+    </svg>`,
+
+    aquarium: `<svg viewBox="0 0 ${s} ${t}" width="${s}" height="${t}" fill="none">
+      <!-- Tank frame -->
+      <rect x="3" y="6" width="${s-6}" height="${Math.round(t*0.76)}" rx="3" fill="#1A3A5C" stroke="#2A5A8C" stroke-width="1.5"/>
+      <!-- Water fill -->
+      <rect x="5" y="8" width="${s-10}" height="${Math.round(t*0.70)}" rx="2" fill="#1E5C8E" opacity=".9"/>
+      <!-- Water highlight (top shimmer) -->
+      <rect x="5" y="8" width="${s-10}" height="5" rx="2" fill="#4A9ED4" opacity=".5"/>
+      <!-- Seaweed left -->
+      <path d="M${Math.round(cx-14)} ${Math.round(t*0.76)} Q${Math.round(cx-18)} ${Math.round(t*0.60)} ${Math.round(cx-14)} ${Math.round(t*0.50)} Q${Math.round(cx-10)} ${Math.round(t*0.38)} ${Math.round(cx-14)} ${Math.round(t*0.28)}" stroke="#3AB870" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <!-- Seaweed right -->
+      <path d="M${Math.round(cx+12)} ${Math.round(t*0.76)} Q${Math.round(cx+16)} ${Math.round(t*0.62)} ${Math.round(cx+12)} ${Math.round(t*0.50)} Q${Math.round(cx+8)} ${Math.round(t*0.38)} ${Math.round(cx+12)} ${Math.round(t*0.28)}" stroke="#2AA860" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <!-- Gravel/sand bottom -->
+      <rect x="5" y="${Math.round(t*0.70)}" width="${s-10}" height="8" rx="2" fill="#C4A055"/>
+      <ellipse cx="${Math.round(cx-6)}" cy="${Math.round(t*0.73)}" rx="4" ry="2.5" fill="#B89040"/>
+      <ellipse cx="${Math.round(cx+8)}" cy="${Math.round(t*0.72)}" rx="3" ry="2" fill="#CCA860"/>
+      <!-- Fish 1 (orange) -->
+      <ellipse cx="${Math.round(cx-4)}" cy="${Math.round(t*0.38)}" rx="8" ry="5" fill="#FF7820"/>
+      <path d="M${Math.round(cx+4)} ${Math.round(t*0.34)} L${Math.round(cx+12)} ${Math.round(t*0.30)} L${Math.round(cx+12)} ${Math.round(t*0.46)} Z" fill="#FF5A10"/>
+      <circle cx="${Math.round(cx-8)}" cy="${Math.round(t*0.37)}" r="1.5" fill="#000" opacity=".8"/>
+      <!-- Fish 2 (yellow) small -->
+      <ellipse cx="${Math.round(cx+8)}" cy="${Math.round(t*0.55)}" rx="5" ry="3.5" fill="#FFD020"/>
+      <path d="M${Math.round(cx+13)} ${Math.round(t*0.52)} L${Math.round(cx+18)} ${Math.round(t*0.50)} L${Math.round(cx+18)} ${Math.round(t*0.60)} Z" fill="#FFC000"/>
+      <circle cx="${Math.round(cx+5)}" cy="${Math.round(t*0.54)}" r="1.2" fill="#000" opacity=".8"/>
+      <!-- Bubbles -->
+      <circle cx="${Math.round(cx-10)}" cy="${Math.round(t*0.22)}" r="2" fill="none" stroke="#7AC8E8" stroke-width="1"/>
+      <circle cx="${Math.round(cx+4)}" cy="${Math.round(t*0.15)}" r="1.5" fill="none" stroke="#7AC8E8" stroke-width="0.8"/>
+      <circle cx="${Math.round(cx-2)}" cy="${Math.round(t*0.28)}" r="1" fill="none" stroke="#7AC8E8" stroke-width="0.8"/>
+      <!-- Stand/base -->
+      <rect x="${Math.round(cx-12)}" y="${Math.round(t*0.82)}" width="24" height="${Math.round(t*0.10)}" rx="2" fill="#8B6030" stroke="#6A4820" stroke-width="1"/>
+      <rect x="${Math.round(cx-8)}" y="${Math.round(t*0.92)}" width="16" height="${Math.round(t*0.07)}" rx="2" fill="#7A5020"/>
+    </svg>`,
+
+    zen_garden: `<svg viewBox="0 0 ${s} ${t}" width="${s}" height="${t}" fill="none">
+      <!-- Outer tray frame — fills most of card -->
+      <rect x="3" y="${Math.round(t*0.10)}" width="${s-6}" height="${Math.round(t*0.82)}" rx="4" fill="#8B7040" stroke="#6A5228" stroke-width="1.5"/>
+      <!-- Sand fill -->
+      <rect x="6" y="${Math.round(t*0.14)}" width="${s-12}" height="${Math.round(t*0.74)}" rx="2" fill="#E8D898"/>
+      <!-- Raked sand lines (horizontal waves) — all inside tray -->
+      <path d="M8 ${Math.round(t*0.28)} Q${Math.round(cx)} ${Math.round(t*0.30)} ${s-8} ${Math.round(t*0.28)}" stroke="#D4C080" stroke-width="1.2" fill="none"/>
+      <path d="M8 ${Math.round(t*0.40)} Q${Math.round(cx)} ${Math.round(t*0.42)} ${s-8} ${Math.round(t*0.40)}" stroke="#D4C080" stroke-width="1.2" fill="none"/>
+      <path d="M8 ${Math.round(t*0.52)} Q${Math.round(cx)} ${Math.round(t*0.54)} ${s-8} ${Math.round(t*0.52)}" stroke="#D4C080" stroke-width="1.2" fill="none"/>
+      <path d="M8 ${Math.round(t*0.64)} Q${Math.round(cx)} ${Math.round(t*0.66)} ${s-8} ${Math.round(t*0.64)}" stroke="#D4C080" stroke-width="1.2" fill="none"/>
+      <path d="M8 ${Math.round(t*0.74)} Q${Math.round(cx)} ${Math.round(t*0.76)} ${s-8} ${Math.round(t*0.74)}" stroke="#D4C080" stroke-width="1.1" fill="none"/>
+      <!-- Two large stones -->
+      <ellipse cx="${Math.round(cx-10)}" cy="${Math.round(t*0.46)}" rx="8" ry="6" fill="#9A9090"/>
+      <ellipse cx="${Math.round(cx-10)}" cy="${Math.round(t*0.44)}" rx="5.5" ry="3.5" fill="#C0B8B0" opacity=".6"/>
+      <ellipse cx="${Math.round(cx+10)}" cy="${Math.round(t*0.56)}" rx="7" ry="5" fill="#888080"/>
+      <ellipse cx="${Math.round(cx+10)}" cy="${Math.round(t*0.54)}" rx="4.5" ry="3" fill="#B0A8A0" opacity=".55"/>
+      <!-- Small pebble cluster center -->
+      <ellipse cx="${cx}" cy="${Math.round(t*0.68)}" rx="5" ry="3.5" fill="#8A8880"/>
+      <ellipse cx="${Math.round(cx-4)}" cy="${Math.round(t*0.70)}" rx="3" ry="2" fill="#A09890" opacity=".7"/>
+      <ellipse cx="${Math.round(cx+4)}" cy="${Math.round(t*0.69)}" rx="3" ry="2" fill="#9A9088" opacity=".7"/>
+      <!-- Tray top rim accent -->
+      <rect x="3" y="${Math.round(t*0.10)}" width="${s-6}" height="5" rx="4" fill="#A08050"/>
+      <!-- Mini rake in top corner -->
+      <line x1="${Math.round(cx+12)}" y1="${Math.round(t*0.18)}" x2="${Math.round(cx+12)}" y2="${Math.round(t*0.28)}" stroke="#8B6030" stroke-width="2" stroke-linecap="round"/>
+      <line x1="${Math.round(cx+9)}" y1="${Math.round(t*0.28)}" x2="${Math.round(cx+15)}" y2="${Math.round(t*0.28)}" stroke="#8B6030" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>`,
+
+    plant_table: `<svg viewBox="0 0 ${s} ${t}" width="${s}" height="${t}" fill="none">
+      <!-- Table top surface — at 55% so pots above are clearly visible -->
+      <rect x="3" y="${Math.round(t*0.54)}" width="${s-6}" height="7" rx="3" fill="#C89060" stroke="#A07040" stroke-width="1.2"/>
+      <!-- Table legs -->
+      <rect x="${Math.round(cx-13)}" y="${Math.round(t*0.60)}" width="5" height="${Math.round(t*0.38)}" rx="2" fill="#A07040"/>
+      <rect x="${Math.round(cx+8)}" y="${Math.round(t*0.60)}" width="5" height="${Math.round(t*0.38)}" rx="2" fill="#A07040"/>
+      <!-- Bottom stretcher bar -->
+      <rect x="${Math.round(cx-10)}" y="${Math.round(t*0.80)}" width="${Math.round(s*0.38)}" height="3" rx="1" fill="#906030"/>
+      <!-- LEFT POT — sits ON the table top, clearly above -->
+      <!-- Pot body -->
+      <rect x="${Math.round(cx-18)}" y="${Math.round(t*0.38)}" width="14" height="17" rx="3" fill="#C4886B" stroke="#A06848" stroke-width="1"/>
+      <!-- Pot rim (wider lip at top) -->
+      <rect x="${Math.round(cx-20)}" y="${Math.round(t*0.36)}" width="18" height="5" rx="2" fill="#D49878"/>
+      <!-- Left plant leaves — compact, clearly above pot -->
+      <ellipse cx="${Math.round(cx-15)}" cy="${Math.round(t*0.28)}" rx="7" ry="6" fill="#5A9A58"/>
+      <ellipse cx="${Math.round(cx-9)}"  cy="${Math.round(t*0.24)}" rx="6" ry="5" fill="#7CB97A"/>
+      <ellipse cx="${Math.round(cx-20)}" cy="${Math.round(t*0.26)}" rx="5" ry="4" fill="#6BAF6A"/>
+      <!-- RIGHT POT — sits ON the table top -->
+      <rect x="${Math.round(cx+4)}" y="${Math.round(t*0.38)}" width="14" height="17" rx="3" fill="#B07858" stroke="#886040" stroke-width="1"/>
+      <rect x="${Math.round(cx+2)}" y="${Math.round(t*0.36)}" width="18" height="5" rx="2" fill="#C08868"/>
+      <!-- Right plant leaves — succulent style -->
+      <ellipse cx="${Math.round(cx+11)}" cy="${Math.round(t*0.30)}" rx="6" ry="7" fill="#8BC98A"/>
+      <ellipse cx="${Math.round(cx+16)}" cy="${Math.round(t*0.26)}" rx="5" ry="5" fill="#7CB97A"/>
+      <ellipse cx="${Math.round(cx+6)}"  cy="${Math.round(t*0.25)}" rx="5" ry="5" fill="#9ED99E"/>
     </svg>`,
 
     sofa: `<svg viewBox="0 0 ${s} ${t}" width="${s}" height="${t}" fill="none">

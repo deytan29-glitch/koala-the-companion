@@ -82,6 +82,7 @@ export const DEFAULTS = {
 
   // === ROOMS ===
   currentRoom: 'living',            // 'living' | 'kitchen' | 'bedroom'
+  scenery: 'default',               // 'default' | 'desert' | 'snow' | 'beach' | 'city'
 
   // === ONBOARDING ===
   onboardingComplete: false,        // True after first-launch flow is finished

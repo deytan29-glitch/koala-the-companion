@@ -165,13 +165,60 @@ function doStretch() {
   const armL = document.getElementById('armL');
   const armR = document.getElementById('armR');
   kb.classList.remove('idle', 'hurt'); kb.classList.add('stretching');
-  if (armL) armL.setAttribute('transform', 'rotate(-30 26 72)');
-  if (armR) armR.setAttribute('transform', 'rotate(30 74 72)');
+  // Show yoga mat under koala
+  _showActivityProp('actStretchMat', true);
+  // Arms spread wide for stretch
+  if (armL) armL.setAttribute('transform', 'rotate(-50 26 72)');
+  if (armR) armR.setAttribute('transform', 'rotate(50 74 72)');
+  setTimeout(() => {
+    if (armL) armL.setAttribute('transform', 'rotate(-15 26 72)');
+    if (armR) armR.setAttribute('transform', 'rotate(15 74 72)');
+  }, 1000);
+  setTimeout(() => {
+    if (armL) armL.setAttribute('transform', 'rotate(-50 26 72)');
+    if (armR) armR.setAttribute('transform', 'rotate(50 74 72)');
+  }, 1800);
   setTimeout(() => {
     if (armL) armL.setAttribute('transform', 'rotate(-10 26 72)');
     if (armR) armR.setAttribute('transform', 'rotate(10 74 72)');
-  }, 1800);
-  setTimeout(() => { kb.classList.remove('stretching'); kb.classList.add(idleClass()); koalaState.busy = false; }, 2500);
+    _showActivityProp('actStretchMat', false);
+    kb.classList.remove('stretching'); kb.classList.add(idleClass());
+    koalaState.busy = false;
+  }, 3000);
+}
+
+function doWeightLift() {
+  if (koalaState.busy) return;
+  koalaState.busy = true;
+  const kb   = document.getElementById('koalaBody');
+  const armL = document.getElementById('armL');
+  const armR = document.getElementById('armR');
+  kb.classList.remove('idle', 'hurt'); kb.classList.add('stretching');
+  _showActivityProp('actWeightLift', true);
+
+  // Alternating curl reps — arms go up and down
+  const reps = [0, 550, 1100, 1650, 2200, 2750, 3300, 3850];
+  reps.forEach((t, i) => {
+    setTimeout(() => {
+      if (i % 2 === 0) {
+        // Left arm up, right arm down
+        if (armL) armL.setAttribute('transform', 'rotate(-75 26 72)');
+        if (armR) armR.setAttribute('transform', 'rotate(20 74 72)');
+      } else {
+        // Right arm up, left arm down
+        if (armL) armL.setAttribute('transform', 'rotate(-20 26 72)');
+        if (armR) armR.setAttribute('transform', 'rotate(75 74 72)');
+      }
+    }, t);
+  });
+
+  setTimeout(() => {
+    _showActivityProp('actWeightLift', false);
+    if (armL) armL.setAttribute('transform', 'rotate(-10 26 72)');
+    if (armR) armR.setAttribute('transform', 'rotate(10 74 72)');
+    kb.classList.remove('stretching'); kb.classList.add(idleClass());
+    koalaState.busy = false;
+  }, 5000);
 }
 
 function doHeadScratch() {
@@ -434,17 +481,15 @@ export function startIdleBehaviors() {
     const tod    = getToD();
     const sleepy = (tod === 'night' || tod === 'evening');
 
-    // Activity props — fire very frequently so koala is always doing something
-    if (r < 0.10)      doYawn();
-    else if (r < 0.16) doStretch();
-    else if (r < 0.22) doLookAround();
-    else if (r < 0.27) doSniff();
-    else if (r < 0.32) doHeadScratch();
-    else if (r < 0.44) doPainting();        // painting
-    else if (r < 0.55) doPlayBall();        // ball play
-    else if (r < 0.65) doYoga();            // yoga/meditation
-    else if (r < 0.74) doDance();           // dancing
-    else if (r < 0.83) doJournal();         // journaling
+    // Full-body activities only — no head-only micro-animations
+    if (r < 0.10)      doYawn();             // yawn (brief, wholesome)
+    else if (r < 0.18) doStretch();          // stretch on mat
+    else if (r < 0.30) doPainting();         // painting easel
+    else if (r < 0.40) doPlayBall();         // ball bouncing
+    else if (r < 0.50) doYoga();             // yoga / meditation
+    else if (r < 0.60) doDance();            // dancing
+    else if (r < 0.70) doJournal();          // journaling
+    else if (r < 0.82) doWeightLift();       // weight lifting
     else if (r < 0.88 && state.ownedItems.length > 0) doWalkToItem();
     else if (timeSinceInteract > 15000) spawnThought();
     else if (sleepy) doYawn();

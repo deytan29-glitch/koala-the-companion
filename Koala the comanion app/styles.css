@@ -196,7 +196,7 @@ body.dark .open-help-btn{background:linear-gradient(135deg,#141820,#0E1520);colo
 
 /* ===== WINDOW ===== */
 .window-outer{position:absolute;top:6%;left:50%;transform:translateX(-50%);width:54%;aspect-ratio:1/.76;z-index:6}
-.window-frame{width:100%;height:100%;border-radius:12px 12px 3px 3px;border:7px solid var(--wood-mid);background:transparent;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.18),inset 0 0 0 2px var(--wood-light);position:relative}
+.window-frame{width:100%;height:100%;border-radius:12px 12px 3px 3px;border:7px solid var(--wood-mid);background:linear-gradient(180deg,#C8DFF0 0%,#D8EAF6 40%,#C4D8E8 100%);overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.18),inset 0 0 0 2px var(--wood-light);position:relative}
 .window-glass{position:absolute;inset:0;z-index:10;pointer-events:none;transition:all 2s ease}
 .window-glass::after{content:'';position:absolute;top:3%;left:8%;width:35%;height:25%;background:linear-gradient(155deg,rgba(255,255,255,.12),transparent);border-radius:40%;transform:rotate(-8deg)}
 .window-glass.foggy{background:rgba(200,210,220,.08)}
@@ -1185,3 +1185,41 @@ body.koala-sick .nav-btn[data-screen="screenPremium"] { pointer-events:none; opa
    does not freeze it when fixed overlays are shown and dismissed */
 #screenHome{-webkit-overflow-scrolling:touch;transform:translateZ(0)}
 .stat-bar-row.single-bar .stat-bar-group { flex:1 }
+
+/* ===== SCENERY PILLS (Settings panel) ===== */
+.scenery-pill {
+  display:inline-flex; align-items:center; justify-content:center;
+  padding:7px 13px; border-radius:20px; font-size:12px; font-weight:600;
+  cursor:pointer; border:1.5px solid rgba(255,255,255,.18);
+  background:rgba(255,255,255,.08); color:rgba(255,255,255,.75);
+  transition:all .2s; white-space:nowrap;
+}
+.scenery-pill:hover { background:rgba(255,255,255,.14); }
+.scenery-pill.active-scenery {
+  background:rgba(60,180,160,.35); border-color:rgba(60,200,180,.6);
+  color:#fff; box-shadow:0 0 10px rgba(60,200,180,.3);
+}
+
+/* ===== FOCUS START BUTTON — solid teal ===== */
+.focus-start-btn.glass-btn {
+  background:rgba(0,180,160,.85) !important;
+  border-color:rgba(0,210,190,.6) !important;
+  color:#fff !important;
+  box-shadow:0 4px 20px rgba(0,180,160,.45),inset 0 1px 0 rgba(255,255,255,.2) !important;
+}
+.focus-start-btn.glass-btn:hover {
+  background:rgba(0,200,178,.92) !important;
+  box-shadow:0 6px 28px rgba(0,180,160,.55),inset 0 1px 0 rgba(255,255,255,.2) !important;
+}
+
+/* ===== ROYAL THRONE GLOW ===== */
+@keyframes throneGlow {
+  0%,100% { opacity:.55; transform:scale(1); }
+  50%      { opacity:.85; transform:scale(1.06); }
+}
+.throne-glow {
+  position:absolute; border-radius:50%;
+  background:radial-gradient(ellipse,rgba(180,120,255,.55) 0%,rgba(120,60,220,.0) 70%);
+  animation:throneGlow 2.8s ease-in-out infinite;
+  pointer-events:none;
+}

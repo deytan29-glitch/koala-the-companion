@@ -86,11 +86,28 @@ struct WebView: UIViewRepresentable {
         // ── StoreKit 2: Buy ──
         @MainActor
         func purchase() async {
-            do {
-                guard let product = try await Product.products(for: [premiumProductID]).first else {
-                    sendToJS("window.onPremiumPurchaseFailed('Product not found. Check App Store Connect.')")
-                    return
+            // Retry up to 3 times in case the StoreKit testing server
+            // needs a moment to initialise after launch.
+            var product: Product?
+            for attempt in 1...3 {
+                do {
+                    let found = try await Product.products(for: [premiumProductID])
+                    product = found.first
+                } catch {
+                    print("[SK2] products(for:) error on attempt \(attempt): \(error)")
                 }
+                if product != nil { break }
+                if attempt < 3 {
+                    try? await Task.sleep(nanoseconds: 600_000_000) // 0.6 s
+                }
+            }
+
+            guard let product else {
+                sendToJS("window.onPremiumPurchaseFailed('Product not found. Make sure the StoreKit configuration file is selected in the scheme and the product ID matches.')")
+                return
+            }
+
+            do {
                 // This line shows the real Apple payment sheet (Face ID / double-click)
                 let result = try await product.purchase()
                 switch result {
